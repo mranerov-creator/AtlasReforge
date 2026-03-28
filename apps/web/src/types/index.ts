@@ -61,6 +61,11 @@ export interface MigrationResult {
   recommendedTarget: MigrationTarget;
   complexity: string;
   linesOfCode: number;
+  estimatedEffortHours: {
+    consultantHours: number;
+    aiAssistedHours: number;
+    savingsPercent: number;
+  };
   businessLogic: BusinessLogicSummary;
   forgeFiles: GeneratedFile[] | null;
   scriptRunnerCode: GeneratedFile | null;

@@ -88,9 +88,9 @@ function SummaryTab({ result }: { result: NonNullable<ReturnType<typeof useJobPo
       </div>
 
       <RoiBar
-        consultantHours={15}
-        aiHours={3.5}
-        savingsPercent={76}
+        consultantHours={result.estimatedEffortHours.consultantHours}
+        aiHours={result.estimatedEffortHours.aiAssistedHours}
+        savingsPercent={result.estimatedEffortHours.savingsPercent}
       />
 
       <div style={{ marginTop: '20px', marginBottom: '20px' }}>

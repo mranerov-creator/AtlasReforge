@@ -160,6 +160,11 @@ function buildMockResult(
     recommendedTarget: parsedScript.cloudReadiness.recommendedMigrationTarget,
     complexity: parsedScript.complexity,
     linesOfCode: parsedScript.linesOfCode,
+    estimatedEffortHours: {
+      consultantHours: parsedScript.cloudReadiness.estimatedEffortHours.consultantHours,
+      aiAssistedHours: parsedScript.cloudReadiness.estimatedEffortHours.aiAssistedHours,
+      savingsPercent:  parsedScript.cloudReadiness.estimatedEffortHours.savingsPercent,
+    },
     businessLogic: {
       triggerDescription: `${parsedScript.moduleType} trigger detected`,
       purposeNarrative: 'Configure OPENAI_API_KEY and ANTHROPIC_API_KEY for full analysis',

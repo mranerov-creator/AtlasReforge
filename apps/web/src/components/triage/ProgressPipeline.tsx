@@ -13,12 +13,29 @@ interface Props {
 }
 
 const STAGES = [
-  { key: 'classifying', label: 'Classify',  icon: '🔍' },
-  { key: 'extracting',  label: 'Extract',   icon: '🔬' },
-  { key: 'retrieving',  label: 'Retrieve',  icon: '📚' },
-  { key: 'generating',  label: 'Generate',  icon: '⚡' },
-  { key: 'validating',  label: 'Validate',  icon: '✅' },
+  { key: 'classifying',            label: 'Classify',   icon: '🔍' },
+  { key: 'extracting',             label: 'Extract',    icon: '🔬' },
+  { key: 'retrieving',             label: 'Retrieve',   icon: '📚' },
+  { key: 'generating',             label: 'Generate',   icon: '⚡' },
+  { key: 's4b-automation',         label: 'Automation', icon: '🔵' },
+  { key: 'validating',             label: 'Validate',   icon: '✅' },
 ] as const;
+
+/**
+ * Maps raw BullMQ stage names from the worker to our display stage keys.
+ * The worker emits names like 's4b-automation-generator' — we normalise here.
+ */
+const STAGE_KEY_MAP: Record<string, string> = {
+  'classifying':              'classifying',
+  'extracting':               'extracting',
+  'retrieving':               'retrieving',
+  'generating':               'generating',
+  's4-generator':             'generating',
+  's4b-automation-generator': 's4b-automation',
+  'validating':               'validating',
+  'resolving':                'validating',  // shown as validating for simplicity
+  'completed':                'validating',
+};
 
 type StageStatus = 'done' | 'active' | 'pending';
 
@@ -26,7 +43,9 @@ function getStageStatus(stageKey: string, currentStage: string, status: JobStatu
   if (status === 'completed') return 'done';
   if (status === 'failed') return 'pending';
   const stageOrder = STAGES.map(s => s.key);
-  const currentIdx = stageOrder.indexOf(currentStage as typeof stageOrder[number]);
+  // Normalise the raw stage name from the worker to our display key
+  const normalisedCurrent = STAGE_KEY_MAP[currentStage] ?? currentStage;
+  const currentIdx = stageOrder.indexOf(normalisedCurrent as typeof stageOrder[number]);
   const stageIdx = stageOrder.indexOf(stageKey as typeof stageOrder[number]);
   if (stageIdx < currentIdx) return 'done';
   if (stageIdx === currentIdx) return 'active';

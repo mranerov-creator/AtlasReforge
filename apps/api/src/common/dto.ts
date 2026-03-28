@@ -103,6 +103,13 @@ export interface MigrationResultDto {
   validationIssues: ValidationIssueDto[];
   fieldMappingPlaceholders: FieldMappingPlaceholderDto[];
 
+  // ROI — effort savings
+  estimatedEffortHours: {
+    consultantHours: number;
+    aiAssistedHours: number;
+    savingsPercent: number;
+  };
+
   // Telemetry (for ROI dashboard)
   pipeline: {
     totalTokensUsed: number;

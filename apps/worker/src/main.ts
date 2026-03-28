@@ -216,6 +216,11 @@ function buildMockResult(
     recommendedTarget: parsedScript.cloudReadiness.recommendedMigrationTarget,
     complexity: parsedScript.complexity,
     linesOfCode: parsedScript.linesOfCode,
+    estimatedEffortHours: {
+      consultantHours: parsedScript.cloudReadiness.estimatedEffortHours.consultantHours,
+      aiAssistedHours: parsedScript.cloudReadiness.estimatedEffortHours.aiAssistedHours,
+      savingsPercent:  parsedScript.cloudReadiness.estimatedEffortHours.savingsPercent,
+    },
     businessLogic: {
       triggerDescription: `${parsedScript.moduleType} — configure API keys for full analysis`,
       purposeNarrative: 'Set OPENAI_API_KEY + ANTHROPIC_API_KEY in .env.local to enable code generation.',
