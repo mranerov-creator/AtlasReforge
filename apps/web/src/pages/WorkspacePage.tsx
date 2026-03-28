@@ -505,6 +505,95 @@ function DirectImportForm({ ruleJson }: { ruleJson: string }): React.ReactElemen
   );
 }
 
+
+// ─── Manual Rewrite tab ───────────────────────────────────────────────────────
+
+function ManualRewriteTab({ result }: {
+  result: NonNullable<ReturnType<typeof useJobPolling>['result']>
+}): React.ReactElement {
+  // Group issues by category to show actionable groups
+  const blockers = result.validationIssues.filter((i) => i.severity === 'error');
+
+  return (
+    <div style={{ padding: '20px', overflowY: 'auto', flex: 1 }}>
+      {/* Header */}
+      <div style={{
+        display: 'flex', alignItems: 'center', gap: '12px',
+        padding: '14px 18px', marginBottom: '20px',
+        background: 'linear-gradient(135deg, #fef2f2 0%, #fff7ed 100%)',
+        border: '1px solid #fca5a5', borderRadius: '10px',
+      }}>
+        <span style={{ fontSize: '28px' }}>🔴</span>
+        <div>
+          <div style={{ fontWeight: 700, fontSize: '15px', color: '#b91c1c' }}>
+            Manual Rewrite Required
+          </div>
+          <div style={{ fontSize: '12px', color: '#dc2626', marginTop: '2px' }}>
+            This script uses patterns with no automated migration path in Atlassian Cloud.
+          </div>
+        </div>
+      </div>
+
+      {/* Why it can't be automated */}
+      <div style={{ marginBottom: '20px' }}>
+        <h3 style={{ fontSize: '14px', fontWeight: 600, color: '#374151', marginBottom: '10px' }}>
+          Why automated migration is not possible
+        </h3>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+          {result.validationIssues.length === 0 ? (
+            <div style={{ padding: '12px 14px', background: '#fef9c3', border: '1px solid #fde047',
+              borderRadius: '8px', fontSize: '13px', color: '#92400e' }}>
+              The analyzer detected hard blockers during parsing. Check the readiness report for details.
+            </div>
+          ) : (
+            blockers.map((issue, i) => (
+              <div key={i} style={{
+                padding: '12px 14px', background: '#fee2e2',
+                border: '1px solid #fca5a5', borderRadius: '8px',
+              }}>
+                <div style={{ fontWeight: 600, fontSize: '13px', color: '#b91c1c', marginBottom: '3px' }}>
+                  ❌ {issue.code} — {issue.message}
+                </div>
+                <div style={{ fontSize: '12px', color: '#dc2626' }}>{issue.file}</div>
+              </div>
+            ))
+          )}
+        </div>
+      </div>
+
+      {/* Recommended approach */}
+      <div style={{ marginBottom: '20px', padding: '16px', background: '#f0f9ff',
+        border: '1px solid #bae6fd', borderRadius: '8px' }}>
+        <h3 style={{ fontSize: '14px', fontWeight: 600, color: '#0369a1', marginBottom: '10px' }}>
+          💡 Recommended approach
+        </h3>
+        <ol style={{ margin: 0, paddingLeft: '18px', fontSize: '13px', color: '#374151', lineHeight: 2 }}>
+          <li>Review the <strong>Summary tab</strong> for a detailed breakdown of all issues</li>
+          <li>Address each blocker listed above — some may require infrastructure changes
+            (e.g. LDAP → external IdP API, filesystem → object storage)</li>
+          <li>Once blockers are resolved, re-run AtlasReforge — the script may then qualify
+            for an automated Forge or Automation migration</li>
+          <li>Alternatively, use the business logic summary in the Summary tab as a
+            spec for a manual rewrite</li>
+        </ol>
+      </div>
+
+      {/* What the original script does */}
+      <div style={{ padding: '16px', background: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: '8px' }}>
+        <h3 style={{ fontSize: '14px', fontWeight: 600, color: '#374151', marginBottom: '8px' }}>
+          📋 Original script purpose
+        </h3>
+        <p style={{ fontSize: '13px', color: '#6b7280', margin: '0 0 8px', lineHeight: 1.6 }}>
+          {result.businessLogic.triggerDescription}
+        </p>
+        <p style={{ fontSize: '13px', color: '#374151', margin: 0, lineHeight: 1.6 }}>
+          {result.businessLogic.purposeNarrative}
+        </p>
+      </div>
+    </div>
+  );
+}
+
 // ─── Workspace page ───────────────────────────────────────────────────────────
 
 export function WorkspacePage(): React.ReactElement {
@@ -541,10 +630,13 @@ export function WorkspacePage(): React.ReactElement {
             {(
               [
                 'summary',
-                // Show Automation tab only when the result has an automationRule
+                // Show Automation tab only when automationRule present
                 ...(result.automationRule !== null ? ['automation'] : []),
-                'forge',
-                'scriptrunner',
+                // Show Manual Rewrite tab only when target is manual-rewrite
+                ...(result.recommendedTarget === 'manual-rewrite' ? ['manual-rewrite'] : []),
+                // Hide Forge/SR tabs for automation-native and manual-rewrite
+                ...(result.recommendedTarget !== 'automation-native' && result.recommendedTarget !== 'manual-rewrite'
+                  ? ['forge', 'scriptrunner'] : []),
                 'diagram',
               ] as ActiveTab[]
             ).map(tab => (
@@ -568,6 +660,7 @@ export function WorkspacePage(): React.ReactElement {
                   forge: '⚡ Forge',
                   scriptrunner: '📜 ScriptRunner',
                   automation: '🔵 Automation',
+                  'manual-rewrite': '🔴 Manual Rewrite',
                   diagram: '📊 Diagram',
                 }[tab]}
               </button>
@@ -679,6 +772,10 @@ export function WorkspacePage(): React.ReactElement {
                   <span style={{ fontSize: '32px' }}>🔵</span>
                   <span style={{ fontSize: '14px' }}>No automation rule available for this migration target.</span>
                 </div>
+              )}
+
+              {activeTab === 'manual-rewrite' && (
+                <ManualRewriteTab result={result} />
               )}
 
               {activeTab === 'diagram' && (

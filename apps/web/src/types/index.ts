@@ -194,7 +194,7 @@ export interface CompletionBlocker {
 
 // ─── UI state ─────────────────────────────────────────────────────────────────
 
-export type ActiveTab = 'summary' | 'forge' | 'scriptrunner' | 'automation' | 'diagram';
+export type ActiveTab = 'summary' | 'forge' | 'scriptrunner' | 'automation' | 'manual-rewrite' | 'diagram';
 
 export interface WorkspaceState {
   jobId: string;
