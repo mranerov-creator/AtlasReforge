@@ -31,6 +31,12 @@ export type AtlassianModuleType =
   | 'connect-descriptor'      // atlassian-plugin.xml parsed
   | 'inline-script'           // SIL inline in workflow
   | 'field-function'          // SIL getFieldValue patterns
+  // ── SIL (Power Scripts / cPrime/Appfire) specific ──────────────────────
+  | 'live-field'              // 🔴 SIL lfHide/lfDisable/lfWatch — DOM manipulation, no Cloud equivalent
+  | 'scripted-field'          // 🟡 SIL calculated field — compute-only, no write, event-driven in Cloud
+  | 'mail-handler'            // SIL Incoming Mail Handler — parse email → create/update issue
+  | 'sil-rest-endpoint'       // SIL exposes custom REST URL via RESTEndpoint — rewrite as Forge webtrigger
+  | 'jql-alias'               // SIL custom JQL function — rewrite as Forge JQL function module
   | 'unknown';
 
 export type TriggerEvent =
@@ -122,8 +128,11 @@ export type DeprecationReason =
   | 'direct-sql'              // OFBiz SQL access
   | 'filesystem-access'       // java.io.File, groovy.io
   | 'username-usage'          // GDPR — username/userKey deprecated
-  | 'dom-manipulation'        // Direct Jira DOM access
-  | 'deprecated-rest-v2';     // REST API v2 endpoints removed in Cloud
+  | 'dom-manipulation'        // Direct Jira DOM access — also SIL lfHide/lfDisable
+  | 'deprecated-rest-v2'      // REST API v2 endpoints removed in Cloud
+  // ── SIL-specific ──────────────────────────────────────────────────────
+  | 'ldap-access'             // SIL ldap() — no equivalent in Forge, use external IdP API
+  | 'local-file-read';        // SIL readFromTextFile() / writeToTextFile() — no filesystem in Cloud
 
 /**
  * Script dependency (require/import of another script file).
@@ -176,7 +185,13 @@ export type IssueCategory =
   | 'hardcoded-ids'           // customfield IDs, group names
   | 'timeout-risk'            // Logic likely to exceed 25s Forge limit
   | 'missing-oauth-scope'     // Detected API usage requires specific scope
-  | 'connect-to-forge';       // Connect-specific module needing Forge Remote
+  | 'connect-to-forge'        // Connect-specific module needing Forge Remote
+  // ── SIL-specific ──────────────────────────────────────────────────────
+  | 'live-field-dom'          // 🔴 SIL Live Fields — DOM manipulation blocked in Cloud
+  | 'ldap-access'             // 🔴 SIL ldap() — no Forge equivalent
+  | 'local-file-access'       // 🔴 SIL file I/O — no filesystem in Cloud
+  | 'scripted-field-perf'     // 🟡 SIL scripted fields — on-read compute degrades Cloud performance
+  | 'mail-handler-rewrite';   // 🟡 SIL mail handler — rewrite as webhook + Forge function
 
 export interface CloudReadinessReport {
   readonly overallLevel: CloudReadinessLevel;
