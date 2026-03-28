@@ -491,6 +491,69 @@ const DEPRECATED_API_DEFINITIONS: ReadonlyArray<DeprecatedApiDefinition> = [
     cloudAlternative:
       'GET /rest/api/3/user/search?accountId={accountId} or /user?accountId=',
   },
+
+  // ── SIL (Power Scripts) — Server-only primitives ──────────────────────
+
+  // Live Fields — DOM manipulation (🔴 hard blocker in Cloud)
+  {
+    pattern: /\blf[A-Z]\w+\s*\(/g,
+    apiClass: 'SIL Live Field (lf*)',
+    deprecationReason: 'dom-manipulation',
+    cloudAlternative:
+      'Rebuild as Forge Custom UI (React) or use Jira UI Modifications API. ' +
+      'Cloud forbids all direct DOM access.',
+  },
+
+  // LDAP access — no Forge equivalent
+  {
+    pattern: /\bldap\s*\(/g,
+    apiClass: 'SIL ldap()',
+    deprecationReason: 'ldap-access',
+    cloudAlternative:
+      'LDAP is not available in Forge. Expose user/group data via an external REST API ' +
+      '(e.g. Azure AD Graph API, Okta API) and call it with fetch() from @forge/api.',
+  },
+  {
+    pattern: /\bldapSearch\s*\(/g,
+    apiClass: 'SIL ldapSearch()',
+    deprecationReason: 'ldap-access',
+    cloudAlternative:
+      'Replace ldapSearch() with an external IdP REST API called via Forge Egress fetch().',
+  },
+
+  // SIL filesystem access
+  {
+    pattern: /\breadFromTextFile\s*\(/g,
+    apiClass: 'SIL readFromTextFile()',
+    deprecationReason: 'local-file-read',
+    cloudAlternative:
+      'Forge has no filesystem. Store content in Forge Storage API (key-value) ' +
+      'or Confluence page attachments via REST API v3.',
+  },
+  {
+    pattern: /\bwriteToTextFile\s*\(/g,
+    apiClass: 'SIL writeToTextFile()',
+    deprecationReason: 'local-file-read',
+    cloudAlternative:
+      'Forge has no filesystem. Use Forge Storage API or Atlassian Media API for file output.',
+  },
+  {
+    pattern: /\breadFromFile\s*\(/g,
+    apiClass: 'SIL readFromFile()',
+    deprecationReason: 'local-file-read',
+    cloudAlternative:
+      'No filesystem in Cloud. Use Forge Storage API or retrieve from an external service.',
+  },
+
+  // SIL direct SQL
+  {
+    pattern: /\bsql\s*\(/g,
+    apiClass: 'SIL sql()',
+    deprecationReason: 'direct-sql',
+    cloudAlternative:
+      'Direct SQL is forbidden in Cloud. ' +
+      'Use Jira REST API v3 for Jira entity access or expose data through an external API.',
+  },
 ];
 
 export function extractDeprecatedApis(

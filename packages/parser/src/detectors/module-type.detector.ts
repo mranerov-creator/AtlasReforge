@@ -170,6 +170,83 @@ const MODULE_SIGNATURES: Record<
     ],
     weight: 8,
   },
+
+  // ── SIL (Power Scripts / cPrime/Appfire) specific ──────────────────────
+
+  'live-field': {
+    // 🔴 Live Fields manipulate the Jira DOM in real time.
+    // Functions start with 'lf' (Live Field prefix — Power Scripts convention).
+    // ALWAYS a red blocker — Cloud forbids DOM manipulation.
+    patterns: [
+      /\blfHide\s*\(/,
+      /\blfShow\s*\(/,
+      /\blfDisable\s*\(/,
+      /\blfEnable\s*\(/,
+      /\blfWatch\s*\(/,
+      /\blfRestrictSelect\s*\(/,
+      /\blfSetValue\s*\(/,
+      /\blfGetValue\s*\(/,
+      /\blf[A-Z]\w+\s*\(/,              // Any lf* function (Live Field family)
+    ],
+    weight: 15,  // Highest weight — unambiguous SIL Live Field signal
+  },
+
+  'scripted-field': {
+    // 🟡 Calculated fields: compute a value at read-time, no write side-effects.
+    // In Cloud, must be rewritten as event-driven field updates via webhook.
+    patterns: [
+      /\/\/ Scripted [Ff]ield/,
+      /\/\/ Calculated [Ff]ield/,
+      /return\s+\w+.*;\/\/\s*field value/i,
+      /getFieldValue.*return/i,              // Reads multiple fields and returns
+      /\/\*.*scripted.*field.*\*\//i,
+    ],
+    weight: 9,
+  },
+
+  'mail-handler': {
+    // SIL Incoming Mail Handler: processes inbound email to create/update issues
+    patterns: [
+      /\bmailMessage\b/i,
+      /\bgetEmailSubject\s*\(/,
+      /\bgetEmailBody\s*\(/,
+      /\bgetEmailFrom\s*\(/,
+      /\bgetEmailAttachments\s*\(/,
+      /\bIncomingMailHandler\b/,
+      /\bemailMessage\.get/i,
+      /\/\/ Mail [Hh]andler/,
+      /\/\/ Incoming [Mm]ail/,
+    ],
+    weight: 12,
+  },
+
+  'sil-rest-endpoint': {
+    // SIL exposes a custom REST URL. Must be rewritten as Forge webtrigger.
+    patterns: [
+      /\bRESTEndpoint\b/,
+      /\brestResponse\b/i,
+      /\brestRequest\b/i,
+      /\bgetRestParam\s*\(/,
+      /\bgetRequestBody\s*\(/,
+      /\/\/\s*REST [Ee]ndpoint/,
+      /\/rest\/sil\//i,
+    ],
+    weight: 12,
+  },
+
+  'jql-alias': {
+    // SIL custom JQL function. Must be rewritten as Forge JQL function module.
+    patterns: [
+      /\bJQLAlias\b/,
+      /\bjqlAlias\b/,
+      /\bgetJQLResults\s*\(/,
+      /\bcreateJQLAlias\s*\(/,
+      /\/\/ JQL [Aa]lias/,
+      /\/\/ Custom JQL/,
+      /\bregisterJQL\s*\(/,
+    ],
+    weight: 12,
+  },
 };
 
 const TRIGGER_SIGNATURES: Record<
