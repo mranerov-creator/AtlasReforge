@@ -4,6 +4,30 @@ All notable documentation updates are tracked here. Each entry corresponds to co
 
 ---
 
+## [1.2.0] — 2026-03-28
+
+### Added — Local Development
+
+- `docs/INSTALL.md` — Full installation, startup, shutdown, and first-test guide
+- `.env.local` support via `dotenv/config` in API and Worker entry points
+
+### Fixed — Runtime & Robustness
+
+- **Multipart upload**: Installed `@fastify/multipart@8` and registered plugin; rewrote `jobs.controller.ts` for Fastify-native `request.file()` (was using Express-style `@UploadedFile()`)
+- **Package exports**: Added `require` entry to all 5 package.json exports for CJS/NestJS compatibility
+- **Worker dev script**: Replaced `ts-node` with `tsx` (faster, no install prompt)
+- **S4 JSON parser**: `parseJsonResponse` now uses 3-tier extraction strategy (direct parse → markdown fence strip → balanced-brace extraction) to handle Claude's variable output formatting
+- **Frontend crash guards**:
+  - `ReadinessBadge`: guards against undefined/unexpected `level` values (defaults to `red`)
+  - `SummaryTab`: null guards for `businessLogic`, `confidence`, `estimatedEffortHours`
+  - `ManualRewriteTab`: optional chaining for `businessLogic` properties
+
+### Changed — Code Documentation
+
+- `docs/code/llm-orchestrator.md` — Updated `parseJsonResponse` section with 3-tier strategy
+
+---
+
 ## [1.1.0] — 2026-03-28
 
 ### Added — Three-Level Documentation Structure

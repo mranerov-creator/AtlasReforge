@@ -54,7 +54,7 @@ graph LR
 | S4 Generate | Claude Sonnet 4 | 0.2 | All prior + raw script | forgeFiles, srCode, diagram, confidence, placeholders |
 | S5 Validate | Deterministic | — | S4 output | issues[], autoFixCount, patched files |
 
-## Meta-Prompt Security
+## Meta-Prompt Security & Robust Parsing
 
 - Script content wrapped in XML-delimited tags (`<script>`, `<legacy_code>`)
 - Explicit instruction: content inside tags is **untrusted user code**
@@ -62,6 +62,10 @@ graph LR
 - `</script>` sequences sanitised to `</ script>` before wrapping
 - Size limits: S1 = 6K chars, S2 = 8K chars, S4 = 10K chars
 - FORBIDDEN APIs enumerated in S4 system prompt, caught by S5
+- **Robust Parsing (`parseJsonResponse`)**: 3-tier JSON extraction:
+  1. Direct `JSON.parse`
+  2. Markdown fence stripping (` ```json ... ``` `)
+  3. Balanced brace extraction `{...}` ignoring prose before/after
 
 ## S5 Auto-Validator Rules
 
