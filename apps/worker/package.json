@@ -5,7 +5,7 @@
   "type": "commonjs",
   "scripts": {
     "build": "tsc",
-    "dev": "ts-node --esm src/main.ts",
+    "dev": "tsx src/main.ts",
     "start": "node dist/main.js",
     "type-check": "tsc --noEmit"
   },
@@ -14,15 +14,16 @@
     "@atlasreforge/llm-orchestrator": "workspace:*",
     "@atlasreforge/parser": "workspace:*",
     "@atlasreforge/rag-engine": "workspace:*",
+    "@atlasreforge/shared": "workspace:*",
     "bullmq": "^5.34.9",
     "ioredis": "^5.4.2",
-    "pg": "^8.13.1",
-    "@atlasreforge/shared": "workspace:*"
+    "pg": "^8.13.1"
   },
   "devDependencies": {
     "@atlasreforge/tsconfig": "workspace:*",
     "@types/node": "^22.0.0",
     "@types/pg": "^8.11.10",
+    "tsx": "^4.21.0",
     "typescript": "^5.7.2"
   }
 }
