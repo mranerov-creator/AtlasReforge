@@ -52,6 +52,15 @@ export interface AutomationConfidence {
   overallMigration: ConfidenceBlock;
 }
 
+export interface WorkflowContext {
+  workflowName: string;
+  transitionName: string;
+  fromStatus: string | null;
+  toStatus: string | null;
+  scriptIndex: number;
+  totalScriptsInWorkflow: number;
+}
+
 export interface MigrationResult {
   jobId: string;
   originalFilename: string;
@@ -61,6 +70,8 @@ export interface MigrationResult {
   recommendedTarget: MigrationTarget;
   complexity: string;
   linesOfCode: number;
+  /** Populated when this result came from a Jira workflow XML export. Null for standalone scripts. */
+  workflowContext: WorkflowContext | null;
   estimatedEffortHours: {
     consultantHours: number;
     aiAssistedHours: number;

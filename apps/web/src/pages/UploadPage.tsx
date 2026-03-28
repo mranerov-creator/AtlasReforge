@@ -6,7 +6,10 @@ import React, { useState, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { submitJob } from '../lib/api-client.js';
 
-const ALLOWED_EXTS = ['.groovy', '.java', '.sil', '.txt'];
+const ALLOWED_EXTS = ['.groovy', '.java', '.sil', '.xml', '.txt'];
+const XML_EXTS = ['.xml'];
+const MAX_SIZE_STANDARD = 512 * 1024;   // 512 KB for .groovy/.sil/.java
+const MAX_SIZE_XML = 2 * 1024 * 1024;   // 2 MB for workflow XML (multiple scripts)
 
 export function UploadPage(): React.ReactElement {
   const navigate = useNavigate();
@@ -16,13 +19,15 @@ export function UploadPage(): React.ReactElement {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleFile = useCallback(async (file: File) => {
-    const ext = file.name.slice(file.name.lastIndexOf('.'));
-    if (!ALLOWED_EXTS.includes(ext.toLowerCase())) {
-      setError(`File type "${ext}" not supported. Use: ${ALLOWED_EXTS.join(', ')}`);
+    const ext = file.name.slice(file.name.lastIndexOf('.')).toLowerCase();
+    if (!ALLOWED_EXTS.includes(ext)) {
+      setError(`File type "${ext}" not supported. Use: .groovy, .java, .sil, .xml`);
       return;
     }
-    if (file.size > 512 * 1024) {
-      setError('File exceeds 512 KB limit');
+    const isXml = XML_EXTS.includes(ext);
+    const maxSize = isXml ? MAX_SIZE_XML : MAX_SIZE_STANDARD;
+    if (file.size > maxSize) {
+      setError(isXml ? 'Workflow XML exceeds 2 MB limit' : 'File exceeds 512 KB limit');
       return;
     }
 
@@ -60,13 +65,13 @@ export function UploadPage(): React.ReactElement {
         </h1>
         <p style={{ fontSize: '18px', color: '#6b7280', maxWidth: '560px', margin: '0 auto', lineHeight: 1.6 }}>
           Migrate Atlassian Server scripts (Groovy, Java, SIL) to Cloud automatically.
-          Upload your script and get production-ready Forge or ScriptRunner Cloud code in minutes.
+          Upload a script file or a Jira workflow XML export to get production-ready Forge code.
         </p>
       </div>
 
       {/* Drop zone */}
       <div
-        onDragOver={e => { e.preventDefault(); setDragging(true); }}
+        onDragOver={(e: React.DragEvent) => { e.preventDefault(); setDragging(true); }}
         onDragLeave={() => { setDragging(false); }}
         onDrop={handleDrop}
         onClick={() => { fileInputRef.current?.click(); }}
@@ -85,7 +90,7 @@ export function UploadPage(): React.ReactElement {
         <input
           ref={fileInputRef}
           type="file"
-          accept={ALLOWED_EXTS.join(',')}
+          accept=".groovy,.java,.sil,.xml,.txt"
           onChange={handleInputChange}
           style={{ display: 'none' }}
         />
@@ -100,8 +105,11 @@ export function UploadPage(): React.ReactElement {
             <p style={{ fontSize: '18px', fontWeight: 600, color: '#374151', margin: '0 0 8px' }}>
               Drop your script here
             </p>
-            <p style={{ fontSize: '14px', color: '#9ca3af', margin: 0 }}>
-              Supports .groovy, .java, .sil — up to 512 KB
+            <p style={{ fontSize: '14px', color: '#9ca3af', margin: '0 0 8px' }}>
+              .groovy, .java, .sil — single script (512 KB max)
+            </p>
+            <p style={{ fontSize: '13px', color: '#9ca3af', margin: 0 }}>
+              .xml — Jira workflow export (extracts all embedded scripts, 2 MB max)
             </p>
           </>
         )}
@@ -119,6 +127,7 @@ export function UploadPage(): React.ReactElement {
           '🟢 Cloud Readiness Score',
           '🔧 Field Mapping Registry',
           '⚡ Forge + ScriptRunner',
+          '📋 Workflow XML import',
           '🔒 Ephemeral Processing',
           '📊 ROI Calculator',
         ].map(f => (

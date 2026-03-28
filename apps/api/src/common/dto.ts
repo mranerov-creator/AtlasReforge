@@ -80,6 +80,16 @@ export interface MigrationResultDto {
     externalIntegrations: string[];
   };
 
+  /** Populated when this result was extracted from a Jira workflow XML export. */
+  workflowContext: {
+    workflowName: string;
+    transitionName: string;
+    fromStatus: string | null;
+    toStatus: string | null;
+    scriptIndex: number;
+    totalScriptsInWorkflow: number;
+  } | null;
+
   // Generated code
   forgeFiles: GeneratedFileDto[] | null;
   scriptRunnerCode: GeneratedFileDto | null;

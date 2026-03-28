@@ -160,6 +160,7 @@ function buildMockResult(
     recommendedTarget: parsedScript.cloudReadiness.recommendedMigrationTarget,
     complexity: parsedScript.complexity,
     linesOfCode: parsedScript.linesOfCode,
+    workflowContext: parsedScript.workflowContext ?? null,
     estimatedEffortHours: {
       consultantHours: parsedScript.cloudReadiness.estimatedEffortHours.consultantHours,
       aiAssistedHours: parsedScript.cloudReadiness.estimatedEffortHours.aiAssistedHours,

@@ -155,14 +155,27 @@ Return ONLY the JSON classification object.`.trim();
  * S1 doesn't need the full script — just the key signals.
  */
 function buildSignalSummary(script: ParsedScriptShell): string {
-  const lines: string[] = [
+  const lines: string[] = [];
+
+  // ── Workflow XML context (highest priority — most authoritative signal) ──
+  if (script.workflowContext !== null) {
+    lines.push('// ── WORKFLOW XML CONTEXT (extracted from Jira workflow export) ──');
+    lines.push(`// Workflow:    ${script.workflowContext.workflowName}`);
+    lines.push(`// Transition:  ${script.workflowContext.transitionName}`);
+    lines.push(`// From status: ${script.workflowContext.fromStatus ?? 'any'}`);
+    lines.push(`// To status:   ${script.workflowContext.toStatus ?? 'any'}`);
+    lines.push(`// Script ${script.workflowContext.scriptIndex + 1} of ${script.workflowContext.totalScriptsInWorkflow} in this workflow`);
+    lines.push('');
+  }
+
+  lines.push(
     `File: ${script.originalFilename}`,
     `Language: ${script.language}`,
     `Module: ${script.moduleType}`,
     `LOC: ${script.linesOfCode}`,
     '',
     '// Key dependencies detected:',
-  ];
+  );
 
   for (const cf of script.dependencies.customFields.slice(0, 5)) {
     lines.push(`getCustomFieldObject("${cf.fieldId}") // ${cf.usageType}`);

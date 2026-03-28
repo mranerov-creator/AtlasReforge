@@ -89,7 +89,22 @@ ${extractionOutput.enrichedUserRefs.map(u =>
 ).join('\n') || '(no user refs)'}
 
 MIGRATION TARGET: ${classifierOutput.migrationTarget}
-MODULE TYPE: ${classifierOutput.moduleType}`.trim();
+MODULE TYPE: ${classifierOutput.moduleType}${
+  parsedScript.workflowContext !== null
+    ? `
+
+WORKFLOW XML CONTEXT (this script was extracted from a Jira workflow XML export):
+- Workflow name:  ${parsedScript.workflowContext.workflowName}
+- Transition:     ${parsedScript.workflowContext.transitionName}
+- From status:    ${parsedScript.workflowContext.fromStatus ?? 'any'}
+- To status:      ${parsedScript.workflowContext.toStatus ?? 'any'}
+- Script ${parsedScript.workflowContext.scriptIndex + 1} of ${parsedScript.workflowContext.totalScriptsInWorkflow} extracted from this workflow
+
+Use the transition context to make the generated manifest.yml and handler more specific:
+use the transition name in comments, use fromStatus/toStatus in validator logic, and name
+the Forge module key after the transition (e.g. "${parsedScript.workflowContext.transitionName.toLowerCase().replace(/\s+/g, '-')}-handler").`
+    : ''
+}`.trim();
 
   const sanitizedContent = rawScriptContent
     .replace(/<\/legacy_code>/gi, '</ legacy_code>')

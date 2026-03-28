@@ -78,6 +78,50 @@ function ConfidenceRow({ label, score, note, requiresHumanReview }: {
 function SummaryTab({ result }: { result: NonNullable<ReturnType<typeof useJobPolling>['result']> }): React.ReactElement {
   return (
     <div style={{ padding: '20px', overflowY: 'auto', flex: 1 }}>
+
+      {/* Workflow XML context banner — shown only when script came from a workflow XML */}
+      {result.workflowContext !== null && result.workflowContext !== undefined && (
+        <div style={{
+          display: 'flex', alignItems: 'flex-start', gap: '12px',
+          padding: '12px 16px', marginBottom: '16px',
+          background: 'linear-gradient(135deg, #f0f9ff 0%, #eff6ff 100%)',
+          border: '1px solid #bae6fd', borderRadius: '10px',
+        }}>
+          <span style={{ fontSize: '20px', flexShrink: 0 }}>📋</span>
+          <div style={{ flex: 1 }}>
+            <div style={{ fontSize: '13px', fontWeight: 600, color: '#0369a1', marginBottom: '4px' }}>
+              Extracted from Jira Workflow XML
+            </div>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', fontSize: '12px', color: '#374151' }}>
+              <span>
+                <span style={{ color: '#6b7280' }}>Workflow: </span>
+                <strong>{result.workflowContext.workflowName}</strong>
+              </span>
+              <span style={{ color: '#d1d5db' }}>·</span>
+              <span>
+                <span style={{ color: '#6b7280' }}>Transition: </span>
+                <strong>{result.workflowContext.transitionName}</strong>
+              </span>
+              {result.workflowContext.fromStatus !== null && (
+                <>
+                  <span style={{ color: '#d1d5db' }}>·</span>
+                  <span>
+                    <span style={{ color: '#6b7280' }}>Flow: </span>
+                    <strong>{result.workflowContext.fromStatus}</strong>
+                    <span style={{ color: '#6b7280' }}> → </span>
+                    <strong>{result.workflowContext.toStatus ?? '?'}</strong>
+                  </span>
+                </>
+              )}
+              <span style={{ color: '#d1d5db' }}>·</span>
+              <span style={{ color: '#6b7280' }}>
+                Script {result.workflowContext.scriptIndex + 1} of {result.workflowContext.totalScriptsInWorkflow}
+              </span>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div style={{ display: 'flex', gap: '12px', alignItems: 'center', marginBottom: '16px', flexWrap: 'wrap' }}>
         <ReadinessBadge level={result.cloudReadinessLevel} score={result.cloudReadinessScore} size="lg" />
         <span style={{ fontSize: '13px', color: '#6b7280' }}>→ {result.recommendedTarget}</span>
