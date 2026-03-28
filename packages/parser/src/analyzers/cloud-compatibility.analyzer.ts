@@ -13,6 +13,8 @@
 
 import type {
   AtlassianModuleType,
+  AutomationOperation,
+  AutomationSuitability,
   CloudReadinessIssue,
   CloudReadinessLevel,
   CloudReadinessReport,
@@ -21,6 +23,7 @@ import type {
   MigrationTarget,
   ScriptComplexity,
   ScriptLanguage,
+  TriggerEvent,
 } from '../types/parsed-script.types.js';
 
 // ─── Rule definitions ─────────────────────────────────────────────────────────
@@ -36,6 +39,7 @@ interface CompatibilityRule {
 interface AnalysisContext {
   readonly language: ScriptLanguage;
   readonly moduleType: AtlassianModuleType;
+  readonly triggerEvent: TriggerEvent;
   readonly linesOfCode: number;
 }
 
@@ -291,7 +295,238 @@ const RULES: ReadonlyArray<CompatibilityRule> = [
       return null;
     },
   },
+
+  // ── AUTOMATION-NATIVE rules (CR-021–030) ────────────────────────────────
+
+  {
+    code: 'CR-021',
+    evaluate: (deps) => {
+      // Complex external HTTP calls are a blocker for automation-native
+      const complexHttp = deps.externalHttpCalls.filter((c) => c.isDynamic);
+      if (complexHttp.length === 0) return null;
+      return {
+        level: 'yellow',
+        category: 'deprecated-api',
+        title: `${complexHttp.length} dynamic external HTTP call(s) — not expressible in Automation`,
+        description:
+          'Automation rules support static HTTP requests but not dynamic URL construction at runtime. Consider Forge for this script.',
+        affectedExpression: complexHttp.map((c) => c.rawExpression).slice(0, 2).join(', '),
+        lineNumber: complexHttp[0]?.lineNumber ?? null,
+        cloudAlternative: 'Forge fetch() with dynamic URL construction',
+        requiresFieldMappingRegistry: false,
+      };
+    },
+  },
+
+  {
+    code: 'CR-022',
+    evaluate: (deps) => {
+      // Script dependencies are a blocker for automation-native
+      if (deps.scriptDependencies.length === 0) return null;
+      return {
+        level: 'yellow',
+        category: 'deprecated-api',
+        title: 'Cross-script dependencies — not supported in Automation',
+        description:
+          'Automation rules are self-contained. Scripts that require/import other scripts cannot be expressed as a single rule.',
+        affectedExpression: deps.scriptDependencies.map((d) => d.importedPath).join(', '),
+        lineNumber: deps.scriptDependencies[0]?.lineNumber ?? null,
+        cloudAlternative: 'Consolidate logic into a single Forge function or ScriptRunner script.',
+        requiresFieldMappingRegistry: false,
+      };
+    },
+  },
 ];
+
+// ─── Automation Suitability Analysis ─────────────────────────────────────────
+
+/**
+ * Map from TriggerEvent to Atlassian Cloud Automation trigger label.
+ * Only events with direct Automation equivalents are included.
+ */
+const AUTOMATION_TRIGGER_MAP: Partial<Record<TriggerEvent, string>> = {
+  'issue-created':      'Issue created',
+  'issue-updated':      'Issue updated',
+  'issue-transitioned': 'Issue transitioned',
+  'comment-added':      'Comment created',
+  'scheduled':          'Scheduled',
+  'sprint-started':     'Sprint created',
+};
+
+/**
+ * Groovy/SIL patterns that map to Automation actions/conditions.
+ */
+const MAPPABLE_OPERATION_PATTERNS: ReadonlyArray<{
+  pattern: RegExp;
+  label: string;
+  automationEquivalent: string;
+}> = [
+  { pattern: /issue\.setField|\.set\s*\(/i,                   label: 'Set field value',         automationEquivalent: 'Edit issue fields'              },
+  { pattern: /addComment|issue\.comment/i,                     label: 'Add comment',             automationEquivalent: 'Add comment'                    },
+  { pattern: /transitionIssue|performTransition/i,             label: 'Transition issue',        automationEquivalent: 'Transition issue'                },
+  { pattern: /assignIssue|issue\.assignee/i,                   label: 'Assign issue',            automationEquivalent: 'Assign issue'                   },
+  { pattern: /sendEmail|EmailUtils|\.sendMail/i,               label: 'Send email',              automationEquivalent: 'Send email'                     },
+  { pattern: /createSubtask|issueService\.create/i,            label: 'Create subtask',          automationEquivalent: 'Create sub-task'                },
+  { pattern: /JqlQueryBuilder|searchService\.search/i,         label: 'JQL lookup',              automationEquivalent: 'Lookup issues (JQL)'            },
+  { pattern: /issue\.priority|setPriority/i,                   label: 'Set priority',            automationEquivalent: 'Edit issue fields → Priority'   },
+  { pattern: /addWatcher|watcherManager/i,                     label: 'Add watcher',             automationEquivalent: 'Edit watchers'                  },
+  { pattern: /addLabel|issue\.labels/i,                        label: 'Add/set label',           automationEquivalent: 'Edit issue fields → Labels'     },
+];
+
+const UNMAPPABLE_OPERATION_PATTERNS: ReadonlyArray<{
+  pattern: RegExp;
+  label: string;
+}> = [
+  { pattern: /ComponentAccessor|IssueManager|UserManager/,  label: 'Server Java API (ComponentAccessor)' },
+  { pattern: /java\.io\.File|new File\(/,                    label: 'Filesystem access'                   },
+  { pattern: /groovy\.sql|ofBizDelegator/i,                  label: 'Direct SQL / OFBiz access'           },
+  { pattern: /PluginAccessor|ModuleDescriptor/i,             label: 'Plugin API access'                   },
+];
+
+function detectAutomationOperations(
+  rawContent: string,
+): { mappable: AutomationOperation[]; unmappable: AutomationOperation[] } {
+  const mappable: AutomationOperation[] = [];
+  const unmappable: AutomationOperation[] = [];
+
+  for (const { pattern, label, automationEquivalent } of MAPPABLE_OPERATION_PATTERNS) {
+    const match = rawContent.match(pattern);
+    if (match !== null) {
+      mappable.push({
+        label,
+        sourceExpression: match[0] ?? label,
+        automationEquivalent,
+      });
+    }
+  }
+
+  for (const { pattern, label } of UNMAPPABLE_OPERATION_PATTERNS) {
+    const match = rawContent.match(pattern);
+    if (match !== null) {
+      unmappable.push({
+        label,
+        sourceExpression: match[0] ?? label,
+        automationEquivalent: null,
+      });
+    }
+  }
+
+  return { mappable, unmappable };
+}
+
+/**
+ * Determines whether a script is a viable automation-native migration candidate.
+ *
+ * Rules:
+ *   - Trigger MUST have a direct Automation equivalent
+ *   - Script complexity MUST be low or medium
+ *   - No deprecated Server Java APIs
+ *   - No filesystem/SQL access
+ *   - No script dependencies (Automation rules are self-contained)
+ *   - At least one mappable operation detected
+ */
+export function assessAutomationSuitability(
+  deps: DependencyMap,
+  ctx: AnalysisContext,
+  rawScriptContent: string,
+): AutomationSuitability {
+  const mappedTrigger = AUTOMATION_TRIGGER_MAP[ctx.triggerEvent] ?? null;
+
+  // Hard blockers
+  const hasServerApis = deps.deprecatedApis.some(
+    (a) => a.deprecationReason === 'server-only-java-api',
+  );
+  const hasFilesystem = deps.deprecatedApis.some(
+    (a) => a.deprecationReason === 'filesystem-access',
+  );
+  const hasSql = deps.deprecatedApis.some(
+    (a) => a.deprecationReason === 'direct-sql',
+  );
+  const hasScriptDeps = deps.scriptDependencies.length > 0;
+  const complexity = resolveComplexity(deps, ctx.linesOfCode);
+  const isComplexityBlocker = complexity === 'high' || complexity === 'critical';
+
+  const { mappable, unmappable } = detectAutomationOperations(rawScriptContent);
+
+  // Automation requires a known trigger
+  if (mappedTrigger === null) {
+    return {
+      isSuitable: false,
+      confidence: 'low',
+      mappedTrigger: null,
+      mappableOperations: mappable,
+      unmappableOperations: unmappable,
+      rationale: `Trigger event '${ctx.triggerEvent}' has no direct equivalent in Atlassian Cloud Automation. Consider Forge or ScriptRunner.`,
+    };
+  }
+
+  if (hasServerApis || hasFilesystem || hasSql) {
+    return {
+      isSuitable: false,
+      confidence: 'low',
+      mappedTrigger,
+      mappableOperations: mappable,
+      unmappableOperations: unmappable,
+      rationale: 'Script uses Server-only Java APIs, filesystem, or direct SQL access — incompatible with Automation rules.',
+    };
+  }
+
+  if (hasScriptDeps) {
+    return {
+      isSuitable: false,
+      confidence: 'low',
+      mappedTrigger,
+      mappableOperations: mappable,
+      unmappableOperations: unmappable,
+      rationale: 'Script has cross-script dependencies. Automation rules are self-contained and cannot reference other scripts.',
+    };
+  }
+
+  if (isComplexityBlocker) {
+    return {
+      isSuitable: false,
+      confidence: 'low',
+      mappedTrigger,
+      mappableOperations: mappable,
+      unmappableOperations: unmappable,
+      rationale: `Script complexity is '${complexity}'. Automation rules are best suited for low/medium complexity scripts.`,
+    };
+  }
+
+  if (unmappable.length > 0) {
+    return {
+      isSuitable: false,
+      confidence: 'medium',
+      mappedTrigger,
+      mappableOperations: mappable,
+      unmappableOperations: unmappable,
+      rationale: `Script trigger maps to Automation ('${mappedTrigger}') but contains ${unmappable.length} operation(s) not expressible in Automation rules.`,
+    };
+  }
+
+  if (mappable.length === 0) {
+    return {
+      isSuitable: false,
+      confidence: 'low',
+      mappedTrigger,
+      mappableOperations: [],
+      unmappableOperations: [],
+      rationale: 'No recognisable Automation-mappable operations detected in the script body.',
+    };
+  }
+
+  // All checks passed — suitable!
+  const confidence = unmappable.length === 0 && complexity === 'low' ? 'high' : 'medium';
+  return {
+    isSuitable: true,
+    confidence,
+    mappedTrigger,
+    mappableOperations: mappable,
+    unmappableOperations: unmappable,
+    rationale: `Script trigger maps to Automation ('${mappedTrigger}') and all ${mappable.length} detected operation(s) have Automation equivalents. No blockers detected.`,
+  };
+}
+
 
 // ─── Score calculator ─────────────────────────────────────────────────────────
 
@@ -318,6 +553,7 @@ function resolveOverallLevel(
 function resolveMigrationTarget(
   issues: ReadonlyArray<CloudReadinessIssue>,
   ctx: AnalysisContext,
+  automationSuitability: AutomationSuitability | null,
 ): MigrationTarget {
   const hasWebPanel = issues.some(
     (i) => i.category === 'deprecated-api' && i.title.includes('Velocity'),
@@ -332,6 +568,15 @@ function resolveMigrationTarget(
   if (hasWebPanel) return 'forge-native';
   if (hasFilesystem) return 'manual-rewrite';
   if (hasTimeoutRisk) return 'forge-remote';
+
+  // Automation-native wins when confidence is high or medium with no blockers
+  if (
+    automationSuitability?.isSuitable === true &&
+    (automationSuitability.confidence === 'high' ||
+      automationSuitability.confidence === 'medium')
+  ) {
+    return 'automation-native';
+  }
 
   if (ctx.language === 'groovy' && ctx.moduleType !== 'web-panel') {
     return 'forge-or-scriptrunner';
@@ -391,6 +636,7 @@ export function resolveComplexity(
 export function analyzeCloudCompatibility(
   deps: DependencyMap,
   ctx: AnalysisContext,
+  rawScriptContent?: string,
 ): CloudReadinessReport {
   const complexity = resolveComplexity(deps, ctx.linesOfCode);
 
@@ -399,9 +645,15 @@ export function analyzeCloudCompatibility(
     (issue): issue is CloudReadinessIssue => issue !== null,
   );
 
+  // Assess automation-native suitability (requires raw content for pattern detection)
+  const automationSuitability =
+    rawScriptContent !== undefined && rawScriptContent.length > 0
+      ? assessAutomationSuitability(deps, ctx, rawScriptContent)
+      : null;
+
   const overallLevel = resolveOverallLevel(issues);
   const score = calculateScore(issues);
-  const migrationTarget = resolveMigrationTarget(issues, ctx);
+  const migrationTarget = resolveMigrationTarget(issues, ctx, automationSuitability);
   const effort = estimateEffort(complexity);
 
   return {
@@ -410,5 +662,6 @@ export function analyzeCloudCompatibility(
     issues,
     recommendedMigrationTarget: migrationTarget,
     estimatedEffortHours: effort,
+    automationSuitability,
   };
 }
