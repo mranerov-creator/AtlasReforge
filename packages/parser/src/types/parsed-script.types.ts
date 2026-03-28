@@ -31,6 +31,11 @@ export type AtlassianModuleType =
   | 'connect-descriptor'      // atlassian-plugin.xml parsed
   | 'inline-script'           // SIL inline in workflow
   | 'field-function'          // SIL getFieldValue patterns
+  // ── ScriptRunner (Adaptavist / Groovy) specific ─────────────────────────
+  | 'behaviour'            // 🔴 SR Behaviours — getFieldById/setHidden/setRequired (DOM manipulation)
+  | 'script-fragment'      // 🔴 SR Web Items/Panels with HTML injection or Velocity templates
+  | 'escalation-service'   // 🟡 SR Scheduled Escalation Service — bulk JQL + modify (timeout risk)
+
   // ── SIL (Power Scripts / cPrime/Appfire) specific ──────────────────────
   | 'live-field'              // 🔴 SIL lfHide/lfDisable/lfWatch — DOM manipulation, no Cloud equivalent
   | 'scripted-field'          // 🟡 SIL calculated field — compute-only, no write, event-driven in Cloud
@@ -130,6 +135,11 @@ export type DeprecationReason =
   | 'username-usage'          // GDPR — username/userKey deprecated
   | 'dom-manipulation'        // Direct Jira DOM access — also SIL lfHide/lfDisable
   | 'deprecated-rest-v2'      // REST API v2 endpoints removed in Cloud
+  // ── ScriptRunner (Groovy) specific ────────────────────────────────────
+  | 'mutable-issue-sync'      // MutableIssue direct mutation — sync pattern illegal in Cloud
+  | 'behaviour-dom'           // SR Behaviours (getFieldById/setHidden) — DOM forbidden in Cloud
+  | 'velocity-template'       // Velocity .vm templates — no Cloud equivalent
+
   // ── SIL-specific ──────────────────────────────────────────────────────
   | 'ldap-access'             // SIL ldap() — no equivalent in Forge, use external IdP API
   | 'local-file-read';        // SIL readFromTextFile() / writeToTextFile() — no filesystem in Cloud
@@ -191,7 +201,12 @@ export type IssueCategory =
   | 'ldap-access'             // 🔴 SIL ldap() — no Forge equivalent
   | 'local-file-access'       // 🔴 SIL file I/O — no filesystem in Cloud
   | 'scripted-field-perf'     // 🟡 SIL scripted fields — on-read compute degrades Cloud performance
-  | 'mail-handler-rewrite';   // 🟡 SIL mail handler — rewrite as webhook + Forge function
+  | 'mail-handler-rewrite'    // 🟡 SIL mail handler — rewrite as webhook + Forge function
+  // ── ScriptRunner (Groovy) specific ────────────────────────────────────
+  | 'behaviour-dom'           // 🔴 SR Behaviours — DOM manipulation forbidden in Cloud
+  | 'mutable-issue-sync'      // 🟡 SR MutableIssue sync pattern — rewrite as async REST
+  | 'velocity-injection'      // 🔴 SR Velocity/HTML injection — rewrite as Forge UI module
+  | 'bulk-operation-timeout'; // 🟡 SR bulk JQL loops — must paginate + batch in Cloud
 
 export interface CloudReadinessReport {
   readonly overallLevel: CloudReadinessLevel;
