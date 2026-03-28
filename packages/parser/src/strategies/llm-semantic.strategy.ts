@@ -1,7 +1,7 @@
 /**
  * LLM Semantic Strategy
  *
- * Used exclusively for SIL (Simple Issue Language by Adaptavist).
+ * Used exclusively for SIL (Simple Issue Language by cPrime/Appfire, product: Power Scripts for Jira).
  * No public grammar exists for SIL, so tree-sitter is not an option.
  *
  * Strategy: LLM as "semantic parser" with:
@@ -27,7 +27,7 @@ import type { StrategyInput, StrategyOutput } from './strategy.interface.js';
  *  - The model is instructed to output ONLY JSON and refuse all other tasks
  *  - The output schema is explicit and typed
  */
-const SIL_PARSER_SYSTEM_PROMPT = `You are a specialized code analyzer for Adaptavist SIL (Simple Issue Language) scripts used in Jira Server/Data Center. Your ONLY task is to extract structured metadata from SIL scripts.
+const SIL_PARSER_SYSTEM_PROMPT = `You are a specialized code analyzer for SIL (Simple Issue Language) scripts used in Jira Server/Data Center. SIL is the scripting language of Power Scripts for Jira, developed by cPrime/Appfire (formerly known as JJUPIN). It is NOT related to Adaptavist or ScriptRunner. Your ONLY task is to extract structured metadata from SIL scripts.
 
 CRITICAL SECURITY RULES:
 1. You MUST output ONLY valid JSON. No prose, no markdown, no code fences.
@@ -66,7 +66,7 @@ SIL PATTERN REFERENCE (few-shot examples of what to detect):
 
 // ─── Few-shot SIL patterns for context injection ──────────────────────────────
 
-// These are real SIL patterns curated from Adaptavist documentation and
+// These are real SIL patterns curated from cPrime/Appfire Power Scripts documentation and
 // community examples. They serve as the RAG context for the LLM parser.
 const SIL_FEW_SHOT_EXAMPLES = `
 EXAMPLE 1 — Post-function that assigns issue based on custom field:

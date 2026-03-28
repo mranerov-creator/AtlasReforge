@@ -62,7 +62,7 @@ issue.store()
 
   /**
    * Fixture 2: SIL validator with group + field checks
-   * Real-world SIL patterns from Adaptavist ScriptRunner
+   * Real-world SIL patterns from cPrime/Appfire Power Scripts for Jira
    */
   silValidator: `
 // SIL Validator: Ensure sprint assignment for high-priority issues
