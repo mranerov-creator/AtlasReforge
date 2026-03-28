@@ -54,3 +54,16 @@ export {
 // Retriever (for direct use / testing)
 export { PgvectorRetriever, INIT_SQL } from './retrieval/pgvector.retriever.js';
 export type { IndexStats as PgIndexStats } from './retrieval/pgvector.retriever.js';
+
+// ─── DB + Scheduler ───────────────────────────────────────────────────────────
+export {
+  createPool,
+  initializeSchema,
+  checkPoolHealth,
+  DatabaseConnectionError,
+} from './db/pool.factory.js';
+
+export {
+  registerCrawlSchedule,
+  triggerManualCrawl,
+} from './crawler/crawl.scheduler.js';
