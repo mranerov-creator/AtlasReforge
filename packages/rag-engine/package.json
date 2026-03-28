@@ -1,0 +1,34 @@
+{
+  "name": "@atlasreforge/rag-engine",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "test": "vitest run --reporter=verbose",
+    "lint": "eslint src __tests__",
+    "type-check": "tsc --noEmit",
+    "clean": "rm -rf dist coverage",
+    "crawl": "node --loader ts-node/esm src/crawler/atlassian-docs.crawler.ts"
+  },
+  "dependencies": {
+    "pg": "^8.13.1"
+  },
+  "devDependencies": {
+    "@atlasreforge/tsconfig": "workspace:*",
+    "@types/node": "^22.0.0",
+    "@types/pg": "^8.11.10",
+    "@vitest/coverage-v8": "^2.1.8",
+    "vitest": "^2.1.8",
+    "typescript": "^5.7.2"
+  }
+}

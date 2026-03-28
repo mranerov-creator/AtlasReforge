@@ -1,0 +1,28 @@
+{
+  "name": "@atlasreforge/worker",
+  "version": "0.1.0",
+  "private": true,
+  "type": "commonjs",
+  "scripts": {
+    "build": "tsc",
+    "dev": "ts-node --esm src/main.ts",
+    "start": "node dist/main.js",
+    "type-check": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@atlasreforge/field-registry": "workspace:*",
+    "@atlasreforge/llm-orchestrator": "workspace:*",
+    "@atlasreforge/parser": "workspace:*",
+    "@atlasreforge/rag-engine": "workspace:*",
+    "bullmq": "^5.34.9",
+    "ioredis": "^5.4.2",
+    "pg": "^8.13.1",
+    "@atlasreforge/shared": "workspace:*"
+  },
+  "devDependencies": {
+    "@atlasreforge/tsconfig": "workspace:*",
+    "@types/node": "^22.0.0",
+    "@types/pg": "^8.11.10",
+    "typescript": "^5.7.2"
+  }
+}

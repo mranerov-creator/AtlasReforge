@@ -1,0 +1,32 @@
+{
+  "name": "@atlasreforge/llm-orchestrator",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "test": "vitest run --reporter=verbose",
+    "lint": "eslint src __tests__",
+    "type-check": "tsc --noEmit",
+    "clean": "rm -rf dist coverage"
+  },
+  "dependencies": {
+    "@atlasreforge/parser": "workspace:*"
+  },
+  "devDependencies": {
+    "@atlasreforge/tsconfig": "workspace:*",
+    "@types/node": "^22.0.0",
+    "@vitest/coverage-v8": "^2.1.8",
+    "vitest": "^2.1.8",
+    "typescript": "^5.7.2"
+  }
+}

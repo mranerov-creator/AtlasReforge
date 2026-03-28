@@ -1,0 +1,58 @@
+name: CI
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+
+env:
+  NODE_VERSION: '20'
+  PNPM_VERSION: '9.14.2'
+
+jobs:
+  quality:
+    name: Type-check, Lint & Test
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: ${{ env.PNPM_VERSION }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Type-check all packages
+        run: pnpm type-check
+
+      - name: Lint
+        run: pnpm lint
+
+      - name: Build (required before test — packages depend on each other)
+        run: pnpm build
+
+      - name: Run tests with coverage
+        run: pnpm test
+        env:
+          # No real LLM keys in CI — mock client handles all LLM calls in tests
+          ANTHROPIC_API_KEY: 'ci-noop'
+          OPENAI_API_KEY: 'ci-noop'
+
+      - name: Upload coverage report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: coverage-report
+          path: packages/parser/coverage/
+          retention-days: 7

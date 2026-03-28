@@ -1,0 +1,110 @@
+version: '3.9'
+
+# AtlasReforge — Docker Compose (development)
+# Quick start:
+#   cp .env.local.example .env.local && fill in API keys
+#   docker-compose -f infra/docker-compose.yml up
+
+services:
+  postgres:
+    image: pgvector/pgvector:pg16
+    container_name: atlasreforge_postgres
+    environment:
+      POSTGRES_USER: atlasreforge
+      POSTGRES_PASSWORD: atlasreforge_dev
+      POSTGRES_DB: atlasreforge
+    ports:
+      - '5432:5432'
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./sql/init.sql:/docker-entrypoint-initdb.d/01-init.sql:ro
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U atlasreforge -d atlasreforge']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+    restart: unless-stopped
+
+  redis:
+    image: redis:7.4-alpine
+    container_name: atlasreforge_redis
+    ports:
+      - '6379:6379'
+    command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 5s
+    restart: unless-stopped
+
+  api:
+    build:
+      context: ..
+      dockerfile: apps/api/Dockerfile
+      target: development
+    container_name: atlasreforge_api
+    env_file:
+      - ../.env.local
+    environment:
+      NODE_ENV: development
+      REDIS_URL: redis://redis:6379
+      DATABASE_URL: postgresql://atlasreforge:atlasreforge_dev@postgres:5432/atlasreforge
+      PORT: '3001'
+      HOST: '0.0.0.0'
+      ALLOWED_ORIGINS: 'http://localhost:3000'
+      DISABLE_PERSISTENCE: 'true'
+    ports:
+      - '3001:3001'
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ['CMD-SHELL', 'wget -qO- http://localhost:3001/health || exit 1']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    restart: unless-stopped
+
+  worker:
+    build:
+      context: ..
+      dockerfile: apps/worker/Dockerfile
+      target: development
+    container_name: atlasreforge_worker
+    env_file:
+      - ../.env.local
+    environment:
+      NODE_ENV: development
+      REDIS_URL: redis://redis:6379
+      DATABASE_URL: postgresql://atlasreforge:atlasreforge_dev@postgres:5432/atlasreforge
+      WORKER_CONCURRENCY: '3'
+      HEALTH_PORT: '3002'
+      DISABLE_PERSISTENCE: 'true'
+    ports:
+      - '3002:3002'
+    depends_on:
+      redis:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ['CMD-SHELL', 'wget -qO- http://localhost:3002/ || exit 1']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 25s
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+    driver: local
+  redis_data:
+    driver: local
