@@ -18,9 +18,12 @@
     "lint": "eslint src __tests__",
     "type-check": "tsc --noEmit",
     "clean": "rm -rf dist coverage",
-    "crawl": "node --loader ts-node/esm src/crawler/atlassian-docs.crawler.ts"
+    "crawl": "node --loader ts-node/esm src/crawler/atlassian-docs.crawler.ts",
+    "seed": "node --loader ts-node/esm src/seed/seed-rag.ts"
   },
   "dependencies": {
+    "@atlasreforge/shared": "workspace:*",
+    "bullmq": "^5.34.9",
     "pg": "^8.13.1"
   },
   "devDependencies": {
