@@ -247,6 +247,66 @@ const MODULE_SIGNATURES: Record<
     ],
     weight: 12,
   },
+
+  // ── ScriptRunner (Adaptavist / Groovy) specific ──────────────────────
+
+  'behaviour': {
+    // 🔴 SR Behaviours: manipulate form fields in the browser via server-side Groovy.
+    // DOM manipulation is forbidden in Atlassian Cloud.
+    // Signals: Behaviours-specific API methods starting with get/set on field objects.
+    patterns: [
+      /\bgetFieldById\s*\(/,
+      /\.setHidden\s*\(/,
+      /\.setReadOnly\s*\(/,
+      /\.setRequired\s*\(/,
+      /\.setError\s*\(/,
+      /\.clearError\s*\(/,
+      /\.setFormValue\s*\(/,
+      /\.getFormValue\s*\(/,
+      /\.setAllowedValues\s*\(/,       // SR dropdown filtering
+      /com\.onresolve\.jira\.groovy\.behaviours/,
+      /BehavioursService/,
+      /\/\/ Behaviour/i,
+      /\bBehaviour\b/,
+    ],
+    weight: 15,  // Highest — unambiguous SR Behaviour signal
+  },
+
+  'script-fragment': {
+    // 🔴 SR Script Fragments: inject HTML/Velocity panels into Jira UI.
+    // Velocity templates and direct HTML injection are forbidden in Cloud.
+    patterns: [
+      /WebItemModuleDescriptor/,
+      /WebPanelModuleDescriptor/,
+      /\.vm['"]\s*$/m,                  // Velocity template file extension
+      /VelocityTemplatingEngine/,
+      /velocity\.getTemplate\s*\(/,
+      /\bwebResourceManager\b/,
+      /<\?xml.*web-item/i,
+      /\bFragmentCondition\b/,
+      /com\.atlassian\.plugin\.web/,
+      /\/\/ Script [Ff]ragment/,
+      /\bscriptFragment\b/i,
+    ],
+    weight: 12,
+  },
+
+  'escalation-service': {
+    // 🟡 SR Scheduled Escalation Service: bulk JQL iteration + field updates.
+    // Timeout risk in Cloud (25s Forge limit). Must paginate + batch.
+    patterns: [
+      /ScheduledJobService/,
+      /EscalationService/,
+      /escalationService/,
+      /\.search\s*\([^)]*jql/i,         // JQL search in scheduled context
+      /searchService\.searchOverrideSecurity/,
+      /com\.onresolve\.scriptrunner\.jobs/,
+      /\/\/ Escalation/i,
+      /\/\/ Scheduled [Ee]scalation/,
+      /getIssueManager.*scheduled/i,
+    ],
+    weight: 11,
+  },
 };
 
 const TRIGGER_SIGNATURES: Record<

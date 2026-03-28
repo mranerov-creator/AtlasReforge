@@ -492,6 +492,92 @@ const DEPRECATED_API_DEFINITIONS: ReadonlyArray<DeprecatedApiDefinition> = [
       'GET /rest/api/3/user/search?accountId={accountId} or /user?accountId=',
   },
 
+  // ── ScriptRunner (Groovy) — SR-specific API patterns ────────────────────
+
+  // SR Behaviours — DOM manipulation (🔴 hard blocker in Cloud)
+  {
+    pattern: /getFieldById\s*\(/g,
+    apiClass: 'SR Behaviours getFieldById()',
+    deprecationReason: 'behaviour-dom',
+    cloudAlternative:
+      'Cloud forbids DOM manipulation. Migrate to: ' +
+      '(1) Jira UI Modifications API for simple hide/show/require on standard fields. ' +
+      '(2) Forge Custom UI (React, jira:issuePanel) for complex field interactions.',
+  },
+  {
+    pattern: /\.setHidden\s*\(/g,
+    apiClass: 'SR Behaviours .setHidden()',
+    deprecationReason: 'behaviour-dom',
+    cloudAlternative:
+      'Use Jira UI Modifications API: POST /rest/api/3/uiModifications to hide fields.',
+  },
+  {
+    pattern: /\.setRequired\s*\(/g,
+    apiClass: 'SR Behaviours .setRequired()',
+    deprecationReason: 'behaviour-dom',
+    cloudAlternative:
+      'Use Jira UI Modifications API to mark fields as required.',
+  },
+  {
+    pattern: /\.setReadOnly\s*\(/g,
+    apiClass: 'SR Behaviours .setReadOnly()',
+    deprecationReason: 'behaviour-dom',
+    cloudAlternative:
+      'Use Jira UI Modifications API to set fields as read-only.',
+  },
+  {
+    pattern: /\.setError\s*\(/g,
+    apiClass: 'SR Behaviours .setError()',
+    deprecationReason: 'behaviour-dom',
+    cloudAlternative:
+      'Use Forge workflow validator that returns structured JSON error. ' +
+      'Cloud validators cannot manipulate the UI — they return pass/fail.',
+  },
+  {
+    pattern: /\.setAllowedValues\s*\(/g,
+    apiClass: 'SR Behaviours .setAllowedValues()',
+    deprecationReason: 'behaviour-dom',
+    cloudAlternative:
+      'Use Jira UI Modifications API to restrict field options, or Forge Custom UI for dynamic dropdowns.',
+  },
+
+  // MutableIssue — synchronous in-memory mutation (🟡 paradigm shift)
+  {
+    pattern: /MutableIssue/g,
+    apiClass: 'MutableIssue',
+    deprecationReason: 'mutable-issue-sync',
+    cloudAlternative:
+      'MutableIssue is a Server-only in-memory object. In Cloud, all issue updates must go through ' +
+      'the REST API v3 asynchronously: PUT /rest/api/3/issue/{key}. ' +
+      'Cloud workflow post-functions are async — the transition has already completed when your code runs.',
+  },
+  {
+    pattern: /issueManager\.createIssueObject\s*\(/g,
+    apiClass: 'IssueManager.createIssueObject()',
+    deprecationReason: 'mutable-issue-sync',
+    cloudAlternative:
+      'Use requestJira() POST /rest/api/3/issue in Forge. Wrap in try/catch — ' +
+      'Cloud post-functions cannot abort a transition that already occurred.',
+  },
+
+  // Velocity templates — no Cloud equivalent (🔴 hard blocker)
+  {
+    pattern: /VelocityTemplatingEngine/g,
+    apiClass: 'VelocityTemplatingEngine',
+    deprecationReason: 'velocity-template',
+    cloudAlternative:
+      'Velocity templates are not supported in Atlassian Cloud. ' +
+      'Rebuild as a Forge Custom UI React component (jira:issuePanel or jira:projectPage).',
+  },
+  {
+    pattern: /velocity\.getTemplate\s*\(/g,
+    apiClass: 'velocity.getTemplate()',
+    deprecationReason: 'velocity-template',
+    cloudAlternative:
+      'Replace Velocity template rendering with a Forge React component. ' +
+      'Use @forge/react UI Kit or Custom UI.',
+  },
+
   // ── SIL (Power Scripts) — Server-only primitives ──────────────────────
 
   // Live Fields — DOM manipulation (🔴 hard blocker in Cloud)
