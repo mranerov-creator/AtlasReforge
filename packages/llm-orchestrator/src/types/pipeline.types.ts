@@ -15,6 +15,8 @@
 
 import type {
   AtlassianModuleType,
+  AutomationRuleOutput,
+  AutomationSuitability,
   MigrationTarget,
   ParsedScriptShell,
   ScriptComplexity,
@@ -206,6 +208,44 @@ export interface FieldMappingPlaceholder {
   readonly requiredInFile: string;     // Which generated file uses this placeholder
 }
 
+
+// ─── Stage 4b — Automation Rule Generator ─────────────────────────────────────
+
+export interface S4bInput {
+  readonly parsedScript: ParsedScriptShell;
+  readonly classifierOutput: S1ClassifierOutput;
+  readonly extractionOutput: S2ExtractionOutput;
+  readonly automationSuitability: AutomationSuitability;
+}
+
+/**
+ * Confidence map specific to Automation rule generation.
+ * Different dimensions from Forge/SR generation (no oauthScopes/webhookLogic).
+ */
+export interface AutomationConfidenceMap {
+  readonly triggerMapping: BlockConfidence;
+  readonly conditionMapping: BlockConfidence;
+  readonly actionMapping: BlockConfidence;
+  readonly overallMigration: BlockConfidence;
+}
+
+export interface S4bGeneratorOutput {
+  /** Re-exported from parser for convenience — the rule + import JSON. */
+  readonly automationRule: AutomationRuleOutput;
+
+  /** Mermaid flowchart of the automation rule flow. */
+  readonly diagram: GeneratedDiagram;
+
+  /** Confidence per mapping dimension. */
+  readonly confidence: AutomationConfidenceMap;
+
+  /** Custom field placeholders needing registry resolution before import. */
+  readonly fieldMappingPlaceholders: ReadonlyArray<FieldMappingPlaceholder>;
+
+  readonly tokensUsed: number;
+  readonly modelUsed: string;
+}
+
 // ─── Stage 5 — Auto-validator ─────────────────────────────────────────────────
 
 export interface S5Input {
@@ -241,6 +281,14 @@ export interface MigrationResult {
   // Core outputs
   readonly forgeFiles: ReadonlyArray<GeneratedFile> | null;
   readonly scriptRunnerCode: GeneratedFile | null;
+
+  /**
+   * Populated when migrationTarget === 'automation-native'.
+   * Contains the importable Automation rule JSON + metadata.
+   * Null for Forge and ScriptRunner targets.
+   */
+  readonly automationRule: AutomationRuleOutput | null;
+
   readonly diagram: GeneratedDiagram;
 
   // Context
