@@ -35,7 +35,7 @@ interface SignalSet {
   readonly negativeSignals: ReadonlyArray<RegExp>; // Patterns that EXCLUDE this language
 }
 
-const SIGNALS: Record<Exclude<ScriptLanguage, 'unknown'>, SignalSet> = {
+const SIGNALS: Record<Exclude<ScriptLanguage, 'unknown' | 'workflow-xml'>, SignalSet> = {
   groovy: {
     syntax: [
       /\bdef\s+\w+\s*[=({]/,             // def keyword (Groovy idiom, not Java)

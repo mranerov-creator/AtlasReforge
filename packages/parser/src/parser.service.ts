@@ -13,6 +13,11 @@
  */
 
 import { createHash, randomUUID } from 'node:crypto';
+import {
+  isWorkflowXml,
+  parseWorkflowXml,
+  type WorkflowXmlParseResult,
+} from './parsers/workflow-xml.parser.js';
 
 import {
   analyzeCloudCompatibility,
@@ -28,6 +33,7 @@ import { runLlmSemanticStrategy } from './strategies/llm-semantic.strategy.js';
 import type {
   ConfidenceScores,
   ParseError,
+  ParsedScript,
   ParsedScriptShell,
   ParseStrategy,
   ParseStrategyMetadata,
@@ -226,6 +232,7 @@ export class ParserService {
       cloudReadiness,
       businessLogic: null,
 
+      workflowContext: null,
       parseStrategy,
       confidence,
       errors,
@@ -233,6 +240,50 @@ export class ParserService {
     };
 
     return result;
+  }
+
+  /**
+   * Parses a Jira workflow XML export and returns all embedded scripts as ParsedScript objects.
+   * Each script is extracted with its WorkflowContext and run through the standard parse() pipeline.
+   */
+  async parseWorkflowXml(
+    xmlContent: string,
+    requestId: string,
+  ): Promise<{ result: WorkflowXmlParseResult; parsedScripts: ParsedScript[] }> {
+    const xmlResult = parseWorkflowXml(xmlContent);
+    const parsedScripts: ParsedScript[] = [];
+
+    for (const extracted of xmlResult.scripts) {
+      try {
+        const parsed = await this.parse({
+          content: extracted.scriptContent,
+          filename: extracted.suggestedFilename,
+          requestId: `${requestId}-wf-${extracted.workflowContext.scriptIndex}`,
+        });
+
+        // Patch: inject workflow context + authoritative module type from XML mapping
+        const enriched: ParsedScript = {
+          ...parsed,
+          workflowContext: extracted.workflowContext,
+          // XML function type is more authoritative than regex detection for ambiguous cases
+          moduleType:
+            parsed.moduleType === 'unknown' || parsed.moduleType === 'field-function'
+              ? extracted.moduleType
+              : parsed.moduleType,
+        };
+
+        parsedScripts.push(enriched);
+      } catch {
+        // Non-fatal: one script failing doesn't abort the batch
+      }
+    }
+
+    return { result: xmlResult, parsedScripts };
+  }
+
+  /** Returns true if the content looks like a Jira workflow XML export. */
+  isWorkflowXml(content: string): boolean {
+    return isWorkflowXml(content);
   }
 }
 
@@ -302,6 +353,7 @@ function buildErrorShell(
       automationSuitability: null,
     },
     businessLogic: null,
+    workflowContext: null,
     parseStrategy: {
       strategy: 'ast',
       reason: 'Parse failed before strategy selection',

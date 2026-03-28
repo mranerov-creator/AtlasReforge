@@ -57,5 +57,16 @@ export {
   resolveComplexity,
 } from './analyzers/cloud-compatibility.analyzer.js';
 
+// Workflow XML parser
+export {
+  parseWorkflowXml,
+  isWorkflowXml,
+} from './parsers/workflow-xml.parser.js';
+export type {
+  ExtractedWorkflowScript,
+  WorkflowXmlParseResult,
+} from './parsers/workflow-xml.parser.js';
+export type { WorkflowContext } from './types/parsed-script.types.js';
+
 // LLM client interface (for DI)
 export type { LlmClient } from './strategies/llm-semantic.strategy.js';

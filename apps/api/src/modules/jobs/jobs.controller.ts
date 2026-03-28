@@ -63,7 +63,8 @@ interface MulterFile {
 
 // ─── Allowed file extensions ──────────────────────────────────────────────────
 
-const ALLOWED_EXTENSIONS = new Set(['.groovy', '.java', '.sil', '.SIL', '.txt']);
+const ALLOWED_EXTENSIONS = new Set(['.groovy', '.java', '.sil', '.SIL', '.xml', '.txt']);
+const MAX_FILE_SIZE_XML_BYTES = 2 * 1024 * 1024; // 2 MB for workflow XML (can contain many scripts)
 const MAX_FILE_SIZE_BYTES = 512 * 1024; // 512 KB
 
 function validateUploadedFile(
@@ -110,7 +111,7 @@ export class JobsController {
   /**
    * POST /jobs
    * Accepts multipart/form-data with:
-   *   - file: the script file (.groovy, .java, .sil)
+   *   - file: script file (.groovy, .java, .sil) OR Jira workflow XML export (.xml)
    *   - body: SubmitJobDto fields
    */
   @Post()
@@ -121,10 +122,16 @@ export class JobsController {
     const { content, filename } = validateUploadedFile(file);
 
     const jobId = uuidv4();
-    const tenantId = jobId; // For MVP, tenant = job
+    const tenantId = jobId;
+
+    // ── Route: Jira workflow XML → extract N embedded scripts → N jobs ──────
+    if (this.parserService.isWorkflowXml(content)) {
+      return this.submitWorkflowXml(content, filename, jobId, tenantId, dto);
+    }
+
+    // ── Route: standalone script file (.groovy / .java / .sil) ──────────────
 
     // Phase 1: Parse the script synchronously (fast — no LLM)
-    // This gives us the dependency map needed to bootstrap the Registry
     const parsedScript = await this.parserService.parse({
       content,
       filename,
@@ -136,7 +143,7 @@ export class JobsController {
       `${parsedScript.moduleType} (${parsedScript.cloudReadiness.overallLevel})`,
     );
 
-    // Phase 2: Bootstrap the Field Mapping Registry session
+    // Phase 2: Bootstrap Field Mapping Registry session
     await this.registryService.buildSession({
       jobId,
       originalFilename: filename,
@@ -158,10 +165,10 @@ export class JobsController {
     const jobData: MigrationJobData = {
       jobId,
       filename,
-      scriptContent: content,      // Ephemeral — stays in Redis job data only
+      scriptContent: content,
       preferredTarget: dto.preferredTarget,
       cloudBaseUrl: dto.cloudBaseUrl,
-      accessToken: dto.accessToken, // Ephemeral — never written to DB
+      accessToken: dto.accessToken,
       tenantId,
       submittedAt: new Date().toISOString(),
     };
@@ -269,5 +276,96 @@ export class JobsController {
     }
 
     return job.returnvalue as MigrationResultDto;
+  }
+
+  // ─── Workflow XML batch handler ─────────────────────────────────────────────
+
+  private async submitWorkflowXml(
+    xmlContent: string,
+    filename: string,
+    batchId: string,
+    tenantId: string,
+    dto: SubmitJobDto,
+  ): Promise<JobSubmittedResponse> {
+    const { result, parsedScripts } = await this.parserService.parseWorkflowXml(
+      xmlContent,
+      batchId,
+    );
+
+    this.logger.log(
+      `Workflow XML "${result.workflowName}": extracted ${parsedScripts.length} scripts ` +
+      `(${result.parseWarnings.length} warnings)`,
+    );
+
+    if (parsedScripts.length === 0) {
+      // Return early with no jobs queued — client will see warnings
+      return {
+        jobId: batchId,
+        status: 'queued',
+        estimatedCostUsd: 0,
+        registrySessionUrl: `/registry/${batchId}`,
+        statusUrl: `/jobs/${batchId}/status`,
+      };
+    }
+
+    const jobIds: string[] = [];
+
+    for (const parsedScript of parsedScripts) {
+      const jobId = uuidv4();
+      jobIds.push(jobId);
+
+      await this.registryService.buildSession({
+        jobId,
+        originalFilename: parsedScript.originalFilename,
+        customFieldRefs: parsedScript.dependencies.customFields.map((cf) => ({
+          fieldId: cf.fieldId,
+          usageType: cf.usageType,
+        })),
+        groupRefs: parsedScript.dependencies.groups.map((g) => ({
+          groupName: g.groupName,
+        })),
+        userRefs: parsedScript.dependencies.users.map((u) => ({
+          identifier: u.identifier,
+          identifierType: u.identifierType,
+          gdprRisk: 'high' as const,
+        })),
+      });
+
+      const wfCtx = parsedScript.workflowContext;
+      const jobData: MigrationJobData = {
+        jobId,
+        filename: parsedScript.originalFilename,
+        // Prepend workflow context as a comment header so the worker/LLM has full context
+        scriptContent: wfCtx
+          ? `// Workflow: ${wfCtx.workflowName}\n` +
+            `// Transition: ${wfCtx.transitionName}\n` +
+            `// From: ${wfCtx.fromStatus ?? 'any'} → To: ${wfCtx.toStatus ?? 'any'}\n` +
+            `// Type: ${parsedScript.moduleType} (${parsedScript.language})\n\n`
+          : '',
+        preferredTarget: dto.preferredTarget,
+        cloudBaseUrl: dto.cloudBaseUrl,
+        accessToken: dto.accessToken,
+        tenantId,
+        submittedAt: new Date().toISOString(),
+      };
+
+      await this.migrationQueue.add(JOB_NAMES.PROCESS_SCRIPT, jobData, {
+        jobId,
+        attempts: 2,
+        backoff: { type: 'exponential', delay: 5000 },
+        removeOnComplete: { age: 3600 },
+        removeOnFail: { age: 86400 },
+      });
+    }
+
+    // Return the first job as primary — client can poll all jobIds
+    const estimatedCostUsd = Math.round(parsedScripts.length * 0.03 * 100) / 100;
+    return {
+      jobId: jobIds[0] ?? batchId,
+      status: 'queued',
+      estimatedCostUsd,
+      registrySessionUrl: `/registry/${jobIds[0] ?? batchId}`,
+      statusUrl: `/jobs/${jobIds[0] ?? batchId}/status`,
+    };
   }
 }
