@@ -39,7 +39,8 @@ const DEPRECATED_PATTERNS = [
 ];
 
 // Map file extensions to Monaco language IDs
-function detectLanguage(filename: string): string {
+function detectLanguage(filename: string | undefined): string {
+  if (!filename) return 'plaintext';
   const ext = filename.slice(filename.lastIndexOf('.') + 1).toLowerCase();
   const map: Record<string, string> = {
     ts: 'typescript', tsx: 'typescript',

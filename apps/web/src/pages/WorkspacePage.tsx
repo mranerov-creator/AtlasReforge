@@ -568,7 +568,8 @@ function ManualRewriteTab({ result }: {
   result: NonNullable<ReturnType<typeof useJobPolling>['result']>
 }): React.ReactElement {
   // Group issues by category to show actionable groups
-  const blockers = result.validationIssues.filter((i) => i.severity === 'error');
+  const validationIssues = result.validationIssues ?? [];
+  const blockers = validationIssues.filter((i) => i.severity === 'error');
 
   return (
     <div style={{ padding: '20px', overflowY: 'auto', flex: 1 }}>
@@ -596,7 +597,7 @@ function ManualRewriteTab({ result }: {
           Why automated migration is not possible
         </h3>
         <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-          {result.validationIssues.length === 0 ? (
+          {validationIssues.length === 0 ? (
             <div style={{ padding: '12px 14px', background: '#fef9c3', border: '1px solid #fde047',
               borderRadius: '8px', fontSize: '13px', color: '#92400e' }}>
               The analyzer detected hard blockers during parsing. Check the readiness report for details.
