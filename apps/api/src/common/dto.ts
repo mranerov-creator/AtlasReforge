@@ -84,6 +84,12 @@ export interface MigrationResultDto {
   forgeFiles: GeneratedFileDto[] | null;
   scriptRunnerCode: GeneratedFileDto | null;
 
+  /**
+   * Populated when recommendedTarget === 'automation-native'.
+   * Contains the importable Automation rule JSON + metadata.
+   */
+  automationRule: AutomationRuleDto | null;
+
   // Diagram (Mermaid source string)
   diagram: {
     type: string;
@@ -112,6 +118,39 @@ export interface GeneratedFileDto {
   content: string;
   language: string;
   purpose: string;
+}
+
+export interface AutomationRuleDto {
+  ruleName: string;
+  ruleJson: string;
+  description: string;
+  limitations: string[];
+  postImportSteps: string[];
+}
+
+// ─── Automation import proxy ──────────────────────────────────────────────────
+
+export class AutomationImportDto {
+  /** The Automation rule JSON (Atlassian export format v1) */
+  ruleJson!: string;
+
+  /** Jira Cloud base URL, e.g. https://yourcompany.atlassian.net */
+  jiraBaseUrl!: string;
+
+  /**
+   * Atlassian API token (Basic auth — never stored, used only for this request).
+   * Format: base64("email:token") — the controller builds the header.
+   */
+  email!: string;
+  apiToken!: string;
+}
+
+export interface AutomationImportResponse {
+  success: boolean;
+  ruleId: string | null;
+  ruleName: string | null;
+  ruleUrl: string | null;
+  message: string;
 }
 
 export interface ConfidenceDto {

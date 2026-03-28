@@ -21,6 +21,7 @@ import { TenantGuard } from './common/guards/tenant.guard.js';
 import { JobsController } from './modules/jobs/jobs.controller.js';
 import { HealthController } from './modules/health/health.controller.js';
 import { RegistryController } from './modules/registry/registry.controller.js';
+import { AutomationController } from './modules/automation/automation.controller.js';
 import { QUEUES } from './modules/jobs/job.constants.js';
 
 const REDIS_URL = process.env['REDIS_URL'] ?? 'redis://localhost:6379';
@@ -43,6 +44,7 @@ const REDIS_URL = process.env['REDIS_URL'] ?? 'redis://localhost:6379';
     HealthController,
     JobsController,
     RegistryController,
+    AutomationController,
   ],
   providers: [
     // ── Core services ────────────────────────────────────────────────────

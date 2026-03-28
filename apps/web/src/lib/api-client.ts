@@ -181,3 +181,29 @@ export async function resolveCode(
     body: JSON.stringify({ code }),
   });
 }
+
+// ─── Automation import proxy ──────────────────────────────────────────────────
+
+export interface AutomationImportRequest {
+  ruleJson: string;
+  jiraBaseUrl: string;
+  email: string;
+  apiToken: string;
+}
+
+export interface AutomationImportResponse {
+  success: boolean;
+  ruleId: string | null;
+  ruleName: string | null;
+  ruleUrl: string | null;
+  message: string;
+}
+
+export async function importAutomationRule(
+  payload: AutomationImportRequest,
+): Promise<AutomationImportResponse> {
+  return request<AutomationImportResponse>('/automation/import', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
+}

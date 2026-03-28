@@ -24,6 +24,7 @@ import { SplitEditor } from '../components/editor/SplitEditor.jsx';
 import { MermaidDiagram } from '../components/diagram/MermaidDiagram.jsx';
 import { RegistryPanel } from '../components/registry/RegistryPanel.jsx';
 import type { ActiveTab, AutomationRule } from '../types/index.js';
+import { importAutomationRule, ApiError } from '../lib/api-client.js';
 
 // ─── ROI Bar ──────────────────────────────────────────────────────────────────
 
@@ -269,12 +270,15 @@ function AutomationTab({ rule }: { rule: AutomationRule }): React.ReactElement {
         </div>
       </div>
 
-      {/* Import instructions */}
-      <div style={{ marginBottom: '20px', padding: '14px 16px', background: '#f0fdf4', border: '1px solid #86efac', borderRadius: '8px' }}>
-        <div style={{ fontSize: '13px', fontWeight: 600, color: '#15803d', marginBottom: '8px' }}>
-          📥 How to import
+      {/* Direct API import */}
+      <DirectImportForm ruleJson={rule.ruleJson} />
+
+      {/* Manual import instructions — fallback */}
+      <div style={{ marginBottom: '20px', padding: '14px 16px', background: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: '8px' }}>
+        <div style={{ fontSize: '13px', fontWeight: 600, color: '#374151', marginBottom: '8px' }}>
+          📥 Or import manually
         </div>
-        <ol style={{ margin: 0, paddingLeft: '18px', fontSize: '13px', color: '#374151', lineHeight: 1.8 }}>
+        <ol style={{ margin: 0, paddingLeft: '18px', fontSize: '13px', color: '#6b7280', lineHeight: 1.8 }}>
           <li>Go to <strong>Jira Settings → Automation</strong></li>
           <li>Click <strong>Import rules</strong> (top right)</li>
           <li>Paste the JSON above and click <strong>Import</strong></li>
@@ -307,6 +311,194 @@ function AutomationTab({ rule }: { rule: AutomationRule }): React.ReactElement {
               <li key={i}>{lim}</li>
             ))}
           </ul>
+        </div>
+      )}
+    </div>
+  );
+}
+
+
+// ─── Direct import form ───────────────────────────────────────────────────────
+
+interface ImportState {
+  status: 'idle' | 'loading' | 'success' | 'error';
+  message: string;
+  ruleUrl: string | null;
+}
+
+function DirectImportForm({ ruleJson }: { ruleJson: string }): React.ReactElement {
+  const [expanded, setExpanded] = React.useState(false);
+  const [email, setEmail] = React.useState('');
+  const [apiToken, setApiToken] = React.useState('');
+  const [jiraBaseUrl, setJiraBaseUrl] = React.useState('https://');
+  const [importState, setImportState] = React.useState<ImportState>({
+    status: 'idle', message: '', ruleUrl: null,
+  });
+
+  const handleImport = async () => {
+    if (!email.trim() || !apiToken.trim() || !jiraBaseUrl.trim()) return;
+    setImportState({ status: 'loading', message: 'Importing rule...', ruleUrl: null });
+    try {
+      const result = await importAutomationRule({ ruleJson, jiraBaseUrl, email, apiToken });
+      setImportState({ status: 'success', message: result.message, ruleUrl: result.ruleUrl });
+      // Clear credentials from state immediately after use
+      setApiToken('');
+    } catch (err) {
+      const msg = err instanceof ApiError ? err.message : 'Unexpected error. Please try again.';
+      setImportState({ status: 'error', message: msg, ruleUrl: null });
+    }
+  };
+
+  return (
+    <div style={{ marginBottom: '20px', border: '1px solid #e5e7eb', borderRadius: '10px', overflow: 'hidden' }}>
+      {/* Collapsible header */}
+      <button
+        onClick={() => { setExpanded(!expanded); }}
+        style={{
+          width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+          padding: '12px 16px', background: expanded ? '#f0f9ff' : '#f9fafb',
+          border: 'none', cursor: 'pointer', borderBottom: expanded ? '1px solid #e5e7eb' : 'none',
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <span style={{ fontSize: '16px' }}>🚀</span>
+          <span style={{ fontWeight: 600, fontSize: '14px', color: '#1e40af' }}>
+            Import directly via API
+          </span>
+          <span style={{
+            fontSize: '11px', padding: '2px 7px', borderRadius: '10px',
+            background: '#dbeafe', color: '#1d4ed8', fontWeight: 500,
+          }}>
+            One-click
+          </span>
+        </div>
+        <span style={{ fontSize: '12px', color: '#6b7280' }}>{expanded ? '▲' : '▼'}</span>
+      </button>
+
+      {expanded && (
+        <div style={{ padding: '16px', background: '#fff' }}>
+          <p style={{ fontSize: '13px', color: '#6b7280', margin: '0 0 14px', lineHeight: 1.5 }}>
+            Enter your Atlassian credentials to import this rule directly.
+            Your API token is used only for this request and is never stored.
+          </p>
+
+          {/* Form fields */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '14px' }}>
+            <div>
+              <label style={{ fontSize: '12px', fontWeight: 600, color: '#374151', display: 'block', marginBottom: '4px' }}>
+                Jira Cloud URL
+              </label>
+              <input
+                type="url"
+                value={jiraBaseUrl}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => { setJiraBaseUrl(e.target.value); }}
+                placeholder="https://yourcompany.atlassian.net"
+                style={{
+                  width: '100%', padding: '8px 10px', fontSize: '13px',
+                  border: '1px solid #d1d5db', borderRadius: '6px',
+                  outline: 'none', boxSizing: 'border-box',
+                }}
+              />
+            </div>
+            <div>
+              <label style={{ fontSize: '12px', fontWeight: 600, color: '#374151', display: 'block', marginBottom: '4px' }}>
+                Email
+              </label>
+              <input
+                type="email"
+                value={email}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => { setEmail(e.target.value); }}
+                placeholder="you@company.com"
+                style={{
+                  width: '100%', padding: '8px 10px', fontSize: '13px',
+                  border: '1px solid #d1d5db', borderRadius: '6px',
+                  outline: 'none', boxSizing: 'border-box',
+                }}
+              />
+            </div>
+            <div>
+              <label style={{ fontSize: '12px', fontWeight: 600, color: '#374151', display: 'block', marginBottom: '4px' }}>
+                API Token
+                <a
+                  href="https://id.atlassian.com/manage-profile/security/api-tokens"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={{ marginLeft: '6px', fontSize: '11px', color: '#3b82f6', fontWeight: 400 }}
+                >
+                  Generate token ↗
+                </a>
+              </label>
+              <input
+                type="password"
+                value={apiToken}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => { setApiToken(e.target.value); }}
+                placeholder="ATATT3x..."
+                autoComplete="off"
+                style={{
+                  width: '100%', padding: '8px 10px', fontSize: '13px',
+                  border: '1px solid #d1d5db', borderRadius: '6px',
+                  outline: 'none', boxSizing: 'border-box',
+                }}
+              />
+              <p style={{ fontSize: '11px', color: '#9ca3af', margin: '4px 0 0' }}>
+                🔒 Token is sent directly to your Jira instance and never stored by AtlasReforge
+              </p>
+            </div>
+          </div>
+
+          {/* Import button */}
+          <button
+            onClick={() => { void handleImport(); }}
+            disabled={importState.status === 'loading' || !email || !apiToken || jiraBaseUrl === 'https://'}
+            style={{
+              width: '100%', padding: '10px', fontWeight: 600, fontSize: '14px',
+              border: 'none', borderRadius: '7px', cursor: importState.status === 'loading' ? 'wait' : 'pointer',
+              background: importState.status === 'loading' ? '#93c5fd' : '#2563eb',
+              color: '#fff', transition: 'background 0.15s',
+              opacity: (!email || !apiToken || jiraBaseUrl === 'https://') ? 0.5 : 1,
+            }}
+          >
+            {importState.status === 'loading' ? '⟳ Importing...' : '🚀 Import rule to Jira Cloud'}
+          </button>
+
+          {/* Status feedback */}
+          {importState.status === 'success' && (
+            <div style={{
+              marginTop: '12px', padding: '12px 14px',
+              background: '#f0fdf4', border: '1px solid #86efac', borderRadius: '8px',
+            }}>
+              <div style={{ fontSize: '13px', fontWeight: 600, color: '#15803d', marginBottom: '4px' }}>
+                ✅ {importState.message}
+              </div>
+              {importState.ruleUrl !== null && (
+                <a
+                  href={importState.ruleUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={{ fontSize: '13px', color: '#2563eb', textDecoration: 'underline' }}
+                >
+                  Open rule in Jira Automation →
+                </a>
+              )}
+              <p style={{ fontSize: '12px', color: '#6b7280', margin: '6px 0 0' }}>
+                The rule is imported in <strong>disabled</strong> state. Review it and enable it when ready.
+              </p>
+            </div>
+          )}
+
+          {importState.status === 'error' && (
+            <div style={{
+              marginTop: '12px', padding: '12px 14px',
+              background: '#fef2f2', border: '1px solid #fca5a5', borderRadius: '8px',
+            }}>
+              <div style={{ fontSize: '13px', fontWeight: 600, color: '#dc2626', marginBottom: '2px' }}>
+                ❌ Import failed
+              </div>
+              <div style={{ fontSize: '13px', color: '#991b1b' }}>
+                {importState.message}
+              </div>
+            </div>
+          )}
         </div>
       )}
     </div>
