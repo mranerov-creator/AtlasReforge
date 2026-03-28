@@ -184,6 +184,13 @@ export interface CloudReadinessReport {
   readonly issues: ReadonlyArray<CloudReadinessIssue>;
   readonly recommendedMigrationTarget: MigrationTarget;
   readonly estimatedEffortHours: EstimatedEffort;
+
+  /**
+   * Populated when the analyzer detects the script may be expressible
+   * as a native Atlassian Cloud Automation rule.
+   * Null when automation-native is not a viable target.
+   */
+  readonly automationSuitability: AutomationSuitability | null;
 }
 
 export type MigrationTarget =
@@ -191,7 +198,89 @@ export type MigrationTarget =
   | 'forge-remote'            // Forge with external backend (heavy compute)
   | 'scriptrunner-cloud'      // ScriptRunner for Cloud (Groovy REST)
   | 'forge-or-scriptrunner'   // Either viable — depends on license/preference
+  | 'automation-native'       // 🔵 Atlassian Cloud Automation rule (no-code/low-code)
   | 'manual-rewrite';         // Too complex for automated migration
+
+// ─── Automation Native types ──────────────────────────────────────────────────
+
+/**
+ * Suitability assessment for migrating a script to Atlassian Cloud Automation.
+ * Produced by the cloud-compatibility analyzer BEFORE LLM stages run.
+ */
+export interface AutomationSuitability {
+  /** Whether this script is a candidate for automation-native migration. */
+  readonly isSuitable: boolean;
+
+  /**
+   * Confidence level in the suitability assessment.
+   *   high   — trigger + all operations map 1:1 to Automation primitives
+   *   medium — trigger maps, some operations need minor adaptation
+   *   low    — trigger maps but operations are partially unsupported
+   */
+  readonly confidence: 'high' | 'medium' | 'low';
+
+  /**
+   * Automation trigger that maps to the detected script trigger.
+   * e.g. "Issue created", "Issue transitioned", "Scheduled"
+   */
+  readonly mappedTrigger: string | null;
+
+  /** Operations the script performs that map to Automation actions/conditions. */
+  readonly mappableOperations: ReadonlyArray<AutomationOperation>;
+
+  /** Operations that CANNOT be expressed in Automation — blockers for this target. */
+  readonly unmappableOperations: ReadonlyArray<AutomationOperation>;
+
+  /**
+   * Human-readable rationale for the suitability decision.
+   * Displayed in the frontend triage card.
+   */
+  readonly rationale: string;
+}
+
+export interface AutomationOperation {
+  /** Short label for the operation, e.g. "Set field value", "HTTP request" */
+  readonly label: string;
+
+  /** The raw code expression that triggered this detection */
+  readonly sourceExpression: string;
+
+  /** Automation equivalent action/condition key, null if unmappable */
+  readonly automationEquivalent: string | null;
+}
+
+/**
+ * The output of Stage 4b — the generated Atlassian Cloud Automation rule.
+ * This is the no-code/low-code counterpart to Forge's forgeFiles.
+ */
+export interface AutomationRuleOutput {
+  /**
+   * The Automation rule name (will appear in the Automation rules list).
+   */
+  readonly ruleName: string;
+
+  /**
+   * Complete Automation rule JSON, ready to import via
+   * Jira Settings → Automation → Import rule.
+   * Conforms to Atlassian Automation rule export schema v1.
+   */
+  readonly ruleJson: string;
+
+  /**
+   * Human-readable description of the rule for documentation purposes.
+   */
+  readonly description: string;
+
+  /**
+   * Limitations compared to the original script — anything lost in translation.
+   */
+  readonly limitations: ReadonlyArray<string>;
+
+  /**
+   * Manual steps required after import (e.g. re-map custom field IDs).
+   */
+  readonly postImportSteps: ReadonlyArray<string>;
+}
 
 export interface EstimatedEffort {
   readonly consultantHours: number;
