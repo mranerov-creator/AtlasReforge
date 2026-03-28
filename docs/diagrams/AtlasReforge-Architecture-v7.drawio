@@ -1,0 +1,437 @@
+<mxGraphModel dx="1422" dy="762" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1654" pageHeight="1169" math="0" shadow="0">
+  <root>
+    <mxCell id="0" />
+    <mxCell id="1" parent="0" />
+
+    <!-- ═══════════════════════════════════════════════════════════
+         TITLE
+    ═══════════════════════════════════════════════════════════ -->
+    <mxCell id="title" value="AtlasReforge AI — Arquitectura Completa  |  ~230 tests  |  v7" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=22;fontStyle=1;fontColor=#1e3a5f;" vertex="1" parent="1">
+      <mxGeometry x="280" y="20" width="1100" height="40" as="geometry" />
+    </mxCell>
+
+    <!-- ═══════════════════════════════════════════════════════════
+         ZONA: USUARIO / INPUT
+    ═══════════════════════════════════════════════════════════ -->
+    <mxCell id="z_user" value="INPUT" style="points=[[0,0],[0.25,0],[0.5,0],[0.75,0],[1,0],[1,0.25],[1,0.5],[1,0.75],[1,1],[0.75,1],[0.5,1],[0.25,1],[0,1],[0,0.75],[0,0.5],[0,0.25]];shape=mxgraph.lean_mapping.electronic_info_flow_edge;strokeColor=#6b7280;fillColor=#f3f4f6;fontStyle=1;fontSize=11;align=left;verticalAlign=top;spacingLeft=8;spacingTop=6;dashed=1;" vertex="1" parent="1">
+      <mxGeometry x="30" y="80" width="200" height="180" as="geometry" />
+    </mxCell>
+    <mxCell id="z_user_label" value="INPUT" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=top;fontSize=11;fontStyle=1;fontColor=#6b7280;" vertex="1" parent="1">
+      <mxGeometry x="38" y="82" width="80" height="20" as="geometry" />
+    </mxCell>
+
+    <mxCell id="file_groovy" value=".groovy / .java&#xa;ScriptRunner" style="shape=mxgraph.flowchart.start_2;fillColor=#dbeafe;strokeColor=#3b82f6;fontColor=#1d4ed8;fontStyle=1;fontSize=10;" vertex="1" parent="1">
+      <mxGeometry x="50" y="110" width="80" height="40" as="geometry" />
+    </mxCell>
+    <mxCell id="file_sil" value=".sil&#xa;Power Scripts" style="shape=mxgraph.flowchart.start_2;fillColor=#d1fae5;strokeColor=#10b981;fontColor=#065f46;fontStyle=1;fontSize=10;" vertex="1" parent="1">
+      <mxGeometry x="145" y="110" width="80" height="40" as="geometry" />
+    </mxCell>
+    <mxCell id="file_xml" value=".xml&#xa;Workflow Export" style="shape=mxgraph.flowchart.start_2;fillColor=#fef3c7;strokeColor=#f59e0b;fontColor=#92400e;fontStyle=1;fontSize=10;" vertex="1" parent="1">
+      <mxGeometry x="50" y="185" width="175" height="40" as="geometry" />
+    </mxCell>
+
+    <!-- ═══════════════════════════════════════════════════════════
+         ZONA: FRONTEND (React / Vite)
+    ═══════════════════════════════════════════════════════════ -->
+    <mxCell id="z_frontend" value="" style="rounded=1;arcSize=4;strokeColor=#3b82f6;fillColor=#eff6ff;dashed=0;strokeWidth=2;" vertex="1" parent="1">
+      <mxGeometry x="260" y="70" width="300" height="370" as="geometry" />
+    </mxCell>
+    <mxCell id="z_frontend_label" value="🌐  FRONTEND — React + Vite (apps/web)" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=top;fontSize=12;fontStyle=1;fontColor=#1d4ed8;" vertex="1" parent="1">
+      <mxGeometry x="265" y="75" width="290" height="22" as="geometry" />
+    </mxCell>
+
+    <mxCell id="upload_page" value="📂 UploadPage&#xa;.groovy / .sil / .xml / .java&#xa;Drag&amp;drop · 512KB / 2MB limit" style="rounded=1;fillColor=#dbeafe;strokeColor=#93c5fd;fontSize=10;align=center;" vertex="1" parent="1">
+      <mxGeometry x="275" y="105" width="270" height="60" as="geometry" />
+    </mxCell>
+
+    <mxCell id="workspace_page" value="🖥️ WorkspacePage" style="rounded=1;fillColor=#dbeafe;strokeColor=#93c5fd;fontSize=11;fontStyle=1;" vertex="1" parent="1">
+      <mxGeometry x="275" y="185" width="270" height="30" as="geometry" />
+    </mxCell>
+
+    <mxCell id="tab_summary" value="📋 Summary&#xa;ROI · Readiness · BizLogic&#xa;Workflow XML Context Banner" style="rounded=1;fillColor=#e0e7ff;strokeColor=#818cf8;fontSize=9;align=center;" vertex="1" parent="1">
+      <mxGeometry x="275" y="230" width="80" height="60" as="geometry" />
+    </mxCell>
+    <mxCell id="tab_forge" value="⚡ Forge&#xa;SplitEditor&#xa;Monaco Diff" style="rounded=1;fillColor=#e0e7ff;strokeColor=#818cf8;fontSize=9;align=center;" vertex="1" parent="1">
+      <mxGeometry x="365" y="230" width="80" height="60" as="geometry" />
+    </mxCell>
+    <mxCell id="tab_sr" value="📜 ScriptRunner&#xa;SplitEditor&#xa;Groovy Cloud" style="rounded=1;fillColor=#e0e7ff;strokeColor=#818cf8;fontSize=9;align=center;" vertex="1" parent="1">
+      <mxGeometry x="455" y="230" width="80" height="60" as="geometry" />
+    </mxCell>
+    <mxCell id="tab_automation" value="🔵 Automation&#xa;Rule JSON&#xa;Direct Import" style="rounded=1;fillColor=#dbeafe;strokeColor=#3b82f6;fontSize=9;align=center;" vertex="1" parent="1">
+      <mxGeometry x="275" y="305" width="80" height="60" as="geometry" />
+    </mxCell>
+    <mxCell id="tab_manual" value="🔴 Manual&#xa;Rewrite&#xa;Blockers" style="rounded=1;fillColor=#fee2e2;strokeColor=#fca5a5;fontSize=9;align=center;" vertex="1" parent="1">
+      <mxGeometry x="365" y="305" width="80" height="60" as="geometry" />
+    </mxCell>
+    <mxCell id="tab_diagram" value="📊 Diagram&#xa;Mermaid.js&#xa;Async Flow" style="rounded=1;fillColor=#e0e7ff;strokeColor=#818cf8;fontSize=9;align=center;" vertex="1" parent="1">
+      <mxGeometry x="455" y="305" width="80" height="60" as="geometry" />
+    </mxCell>
+
+    <mxCell id="registry_panel" value="🗂️ RegistryPanel&#xa;Field Mapping · Groups · Users&#xa;useRegistry hook" style="rounded=1;fillColor=#fef3c7;strokeColor=#fbbf24;fontSize=9;align=center;" vertex="1" parent="1">
+      <mxGeometry x="275" y="385" width="270" height="45" as="geometry" />
+    </mxCell>
+
+    <!-- ═══════════════════════════════════════════════════════════
+         ZONA: API (NestJS)
+    ═══════════════════════════════════════════════════════════ -->
+    <mxCell id="z_api" value="" style="rounded=1;arcSize=4;strokeColor=#7c3aed;fillColor=#f5f3ff;dashed=0;strokeWidth=2;" vertex="1" parent="1">
+      <mxGeometry x="600" y="70" width="280" height="370" as="geometry" />
+    </mxCell>
+    <mxCell id="z_api_label" value="🟣  API — NestJS (apps/api)" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=top;fontSize=12;fontStyle=1;fontColor=#7c3aed;" vertex="1" parent="1">
+      <mxGeometry x="605" y="75" width="270" height="22" as="geometry" />
+    </mxCell>
+
+    <mxCell id="jobs_ctrl" value="📥 JobsController&#xa;POST /jobs&#xa;GET /jobs/:id/status · /result&#xa;→ Workflow XML: N jobs" style="rounded=1;fillColor=#ede9fe;strokeColor=#8b5cf6;fontSize=10;align=center;" vertex="1" parent="1">
+      <mxGeometry x="615" y="105" width="250" height="70" as="geometry" />
+    </mxCell>
+
+    <mxCell id="registry_ctrl" value="🗂️ RegistryController&#xa;GET|PATCH /registry/:jobId&#xa;POST /validate · /skip · /export" style="rounded=1;fillColor=#ede9fe;strokeColor=#8b5cf6;fontSize=10;align=center;" vertex="1" parent="1">
+      <mxGeometry x="615" y="190" width="250" height="60" as="geometry" />
+    </mxCell>
+
+    <mxCell id="automation_ctrl" value="🔵 AutomationController&#xa;POST /automation/import&#xa;Proxy → Atlassian Cloud API&#xa;Basic Auth server-side (token never stored)" style="rounded=1;fillColor=#dbeafe;strokeColor=#3b82f6;fontSize=10;align=center;" vertex="1" parent="1">
+      <mxGeometry x="615" y="265" width="250" height="70" as="geometry" />
+    </mxCell>
+
+    <mxCell id="health_ctrl" value="🏥 HealthController  GET /health" style="rounded=1;fillColor=#ede9fe;strokeColor=#8b5cf6;fontSize=10;align=center;" vertex="1" parent="1">
+      <mxGeometry x="615" y="350" width="250" height="35" as="geometry" />
+    </mxCell>
+
+    <mxCell id="bullmq_producer" value="📤 BullMQ Producer&#xa;Queue: migration · rag-crawl" style="rounded=1;fillColor=#ede9fe;strokeColor=#8b5cf6;fontSize=10;align=center;" vertex="1" parent="1">
+      <mxGeometry x="615" y="400" width="250" height="35" as="geometry" />
+    </mxCell>
+
+    <!-- ═══════════════════════════════════════════════════════════
+         ZONA: REDIS
+    ═══════════════════════════════════════════════════════════ -->
+    <mxCell id="redis" value="🔴 Redis 7&#xa;BullMQ Queues&#xa;migration · rag-crawl&#xa;Job state &amp; progress" style="shape=mxgraph.azure.cache;fillColor=#fee2e2;strokeColor=#dc2626;fontSize=10;align=center;fontStyle=1;" vertex="1" parent="1">
+      <mxGeometry x="925" y="160" width="140" height="100" as="geometry" />
+    </mxCell>
+
+    <!-- ═══════════════════════════════════════════════════════════
+         ZONA: WORKER (BullMQ)
+    ═══════════════════════════════════════════════════════════ -->
+    <mxCell id="z_worker" value="" style="rounded=1;arcSize=4;strokeColor=#059669;fillColor=#ecfdf5;dashed=0;strokeWidth=2;" vertex="1" parent="1">
+      <mxGeometry x="600" y="490" width="280" height="220" as="geometry" />
+    </mxCell>
+    <mxCell id="z_worker_label" value="⚙️  WORKER — BullMQ (apps/worker)" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=top;fontSize=12;fontStyle=1;fontColor=#059669;" vertex="1" parent="1">
+      <mxGeometry x="605" y="495" width="270" height="22" as="geometry" />
+    </mxCell>
+
+    <mxCell id="migration_worker" value="🔄 Migration Worker&#xa;concurrency: 3&#xa;Graceful shutdown (SIGTERM)&#xa;Health: HTTP :3002/health" style="rounded=1;fillColor=#d1fae5;strokeColor=#34d399;fontSize=10;align=center;" vertex="1" parent="1">
+      <mxGeometry x="615" y="520" width="250" height="70" as="geometry" />
+    </mxCell>
+
+    <mxCell id="rag_worker" value="🕷️ RAG Crawl Worker&#xa;concurrency: 1 (sequential)&#xa;Weekly Atlassian docs crawl" style="rounded=1;fillColor=#d1fae5;strokeColor=#34d399;fontSize=10;align=center;" vertex="1" parent="1">
+      <mxGeometry x="615" y="605" width="250" height="55" as="geometry" />
+    </mxCell>
+
+    <mxCell id="mock_mode" value="🔌 Mock Mode (no API keys)&#xa;Returns structured placeholder result" style="rounded=1;fillColor=#f0fdf4;strokeColor=#86efac;fontSize=9;align=center;dashed=1;" vertex="1" parent="1">
+      <mxGeometry x="615" y="673" width="250" height="30" as="geometry" />
+    </mxCell>
+
+    <!-- ═══════════════════════════════════════════════════════════
+         ZONA: PARSER (package)
+    ═══════════════════════════════════════════════════════════ -->
+    <mxCell id="z_parser" value="" style="rounded=1;arcSize=4;strokeColor=#0891b2;fillColor=#ecfeff;dashed=0;strokeWidth=2;" vertex="1" parent="1">
+      <mxGeometry x="260" y="490" width="300" height="380" as="geometry" />
+    </mxCell>
+    <mxCell id="z_parser_label" value="🔍  @atlasreforge/parser" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=top;fontSize=12;fontStyle=1;fontColor=#0891b2;" vertex="1" parent="1">
+      <mxGeometry x="265" y="495" width="290" height="22" as="geometry" />
+    </mxCell>
+
+    <mxCell id="workflow_xml_parser" value="📋 Workflow XML Parser&#xa;12 SR/SIL function types&#xa;CDATA + entities · from/to status&#xa;WorkflowContext extraction" style="rounded=1;fillColor=#cffafe;strokeColor=#06b6d4;fontSize=9;align=center;" vertex="1" parent="1">
+      <mxGeometry x="275" y="522" width="270" height="65" as="geometry" />
+    </mxCell>
+
+    <mxCell id="lang_detector" value="🔎 Language Detector&#xa;groovy · java · sil · workflow-xml" style="rounded=1;fillColor=#cffafe;strokeColor=#06b6d4;fontSize=9;align=center;" vertex="1" parent="1">
+      <mxGeometry x="275" y="600" width="130" height="50" as="geometry" />
+    </mxCell>
+
+    <mxCell id="module_detector" value="📌 Module Type Detector&#xa;29 module types incl.&#xa;behaviour · live-field&#xa;script-fragment · escalation" style="rounded=1;fillColor=#cffafe;strokeColor=#06b6d4;fontSize=9;align=center;" vertex="1" parent="1">
+      <mxGeometry x="415" y="600" width="130" height="50" as="geometry" />
+    </mxCell>
+
+    <mxCell id="dep_extractor" value="🧲 Dependency Extractor&#xa;ComponentAccessor · MutableIssue&#xa;lf*() · ldap() · readFromTextFile&#xa;getFieldById · VelocityEngine" style="rounded=1;fillColor=#cffafe;strokeColor=#06b6d4;fontSize=9;align=center;" vertex="1" parent="1">
+      <mxGeometry x="275" y="663" width="270" height="60" as="geometry" />
+    </mxCell>
+
+    <mxCell id="cloud_analyzer" value="☁️ Cloud Compatibility Analyzer&#xa;45 rules CR-001–045&#xa;🟢🟡🔴 + 🔵 automation-native&#xa;assessAutomationSuitability()" style="rounded=1;fillColor=#cffafe;strokeColor=#06b6d4;fontSize=9;align=center;" vertex="1" parent="1">
+      <mxGeometry x="275" y="735" width="270" height="65" as="geometry" />
+    </mxCell>
+
+    <mxCell id="llm_semantic" value="🤖 LLM Semantic Strategy&#xa;SIL — cPrime/Appfire&#xa;Power Scripts (no grammar)" style="rounded=1;fillColor=#cffafe;strokeColor=#06b6d4;fontSize=9;align=center;dashed=1;" vertex="1" parent="1">
+      <mxGeometry x="275" y="813" width="270" height="50" as="geometry" />
+    </mxCell>
+
+    <!-- ═══════════════════════════════════════════════════════════
+         ZONA: LLM ORCHESTRATOR (pipeline)
+    ═══════════════════════════════════════════════════════════ -->
+    <mxCell id="z_pipeline" value="" style="rounded=1;arcSize=4;strokeColor=#dc2626;fillColor=#fff7ed;dashed=0;strokeWidth=2;" vertex="1" parent="1">
+      <mxGeometry x="925" y="280" width="380" height="600" as="geometry" />
+    </mxCell>
+    <mxCell id="z_pipeline_label" value="🚀  LLM PIPELINE — @atlasreforge/llm-orchestrator" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=top;fontSize=12;fontStyle=1;fontColor=#dc2626;" vertex="1" parent="1">
+      <mxGeometry x="930" y="285" width="370" height="22" as="geometry" />
+    </mxCell>
+
+    <mxCell id="s1" value="S1 — Classifier&#xa;GPT-4o-mini&#xa;moduleType · triggerEvent · migrationTarget&#xa;Groovy / SIL / automation-native rules&#xa;WorkflowContext in signal summary" style="rounded=1;fillColor=#fed7aa;strokeColor=#f97316;fontSize=10;align=center;" vertex="1" parent="1">
+      <mxGeometry x="940" y="315" width="350" height="80" as="geometry" />
+    </mxCell>
+
+    <mxCell id="s2" value="S2 — Structured Extractor&#xa;GPT-4o-mini&#xa;EnrichedCustomFields · Groups · Users&#xa;BusinessLogicSummary · DetectedPatterns" style="rounded=1;fillColor=#fed7aa;strokeColor=#f97316;fontSize=10;align=center;" vertex="1" parent="1">
+      <mxGeometry x="940" y="410" width="350" height="70" as="geometry" />
+    </mxCell>
+
+    <mxCell id="s3" value="S3 — RAG Retrieval&#xa;pgvector cosine similarity&#xa;Atlassian Docs corpus&#xa;NoopRagRetriever (if disabled)" style="rounded=1;fillColor=#fed7aa;strokeColor=#f97316;fontSize=10;align=center;" vertex="1" parent="1">
+      <mxGeometry x="940" y="495" width="350" height="65" as="geometry" />
+    </mxCell>
+
+    <!-- S4 decision fork -->
+    <mxCell id="s4_decision" value="Target?" style="rhombus;fillColor=#fef3c7;strokeColor=#f59e0b;fontSize=11;fontStyle=1;" vertex="1" parent="1">
+      <mxGeometry x="1070" y="575" width="90" height="60" as="geometry" />
+    </mxCell>
+
+    <mxCell id="s4_forge" value="S4 — Forge Generator&#xa;Claude Sonnet&#xa;6 SR extension points&#xa;Behaviour→UI Mods · Fragment→React&#xa;Escalation→batch+cursor&#xa;WorkflowContext in user msg" style="rounded=1;fillColor=#fecaca;strokeColor=#ef4444;fontSize=9;align=center;" vertex="1" parent="1">
+      <mxGeometry x="940" y="655" width="160" height="100" as="geometry" />
+    </mxCell>
+
+    <mxCell id="s4b" value="S4b — Automation Generator&#xa;Claude Sonnet&#xa;Automation rule JSON&#xa;jira:issue-created/transitioned&#xa;Edit/Assign/Comment/Transition&#xa;POST /automation/import ready" style="rounded=1;fillColor=#dbeafe;strokeColor=#3b82f6;fontSize=9;align=center;" vertex="1" parent="1">
+      <mxGeometry x="1130" y="655" width="160" height="100" as="geometry" />
+    </mxCell>
+
+    <mxCell id="s4_sr" value="S4 — SR Cloud Generator&#xa;Claude Sonnet&#xa;Groovy SR target&#xa;REST API v3 + WithPlugin" style="rounded=1;fillColor=#fecaca;strokeColor=#ef4444;fontSize=9;align=center;" vertex="1" parent="1">
+      <mxGeometry x="940" y="770" width="160" height="70" as="geometry" />
+    </mxCell>
+
+    <mxCell id="s4_sil" value="S4 — SIL→Forge Generator&#xa;Claude Sonnet&#xa;25 SIL→Forge mappings&#xa;6 extension point types" style="rounded=1;fillColor=#d1fae5;strokeColor=#10b981;fontSize=9;align=center;" vertex="1" parent="1">
+      <mxGeometry x="1130" y="770" width="160" height="70" as="geometry" />
+    </mxCell>
+
+    <mxCell id="s5" value="S5 — Auto-Validator (deterministic, no LLM)&#xa;VAL_001–040 · ComponentAccessor · userKey · v2 API&#xa;Auto-fix: .getUsername()→.accountId · /api/2/→/api/3/&#xa;Skipped for automation-native" style="rounded=1;fillColor=#fed7aa;strokeColor=#f97316;fontSize=10;align=center;" vertex="1" parent="1">
+      <mxGeometry x="940" y="855" width="350" height="65" as="geometry" />
+    </mxCell>
+
+    <!-- ═══════════════════════════════════════════════════════════
+         ZONA: PACKAGES AUXILIARES
+    ═══════════════════════════════════════════════════════════ -->
+    <mxCell id="z_packages" value="" style="rounded=1;arcSize=4;strokeColor=#92400e;fillColor=#fffbeb;dashed=1;strokeWidth=1.5;" vertex="1" parent="1">
+      <mxGeometry x="260" y="890" width="660" height="170" as="geometry" />
+    </mxCell>
+    <mxCell id="z_packages_label" value="📦  PACKAGES COMPARTIDOS" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=top;fontSize=11;fontStyle=1;fontColor=#92400e;" vertex="1" parent="1">
+      <mxGeometry x="268" y="895" width="250" height="20" as="geometry" />
+    </mxCell>
+
+    <mxCell id="pkg_registry" value="@atlasreforge/field-registry&#xa;RegistryService · InMemoryStore&#xa;Placeholder resolver&#xa;Jira Cloud validator" style="rounded=1;fillColor=#fef3c7;strokeColor=#fbbf24;fontSize=9;align=center;" vertex="1" parent="1">
+      <mxGeometry x="275" y="920" width="150" height="70" as="geometry" />
+    </mxCell>
+
+    <mxCell id="pkg_rag" value="@atlasreforge/rag-engine&#xa;AtlassianDocsCrawler&#xa;OpenAI Embeddings&#xa;pgvectorRetriever · CrawlScheduler" style="rounded=1;fillColor=#fef3c7;strokeColor=#fbbf24;fontSize=9;align=center;" vertex="1" parent="1">
+      <mxGeometry x="440" y="920" width="150" height="70" as="geometry" />
+    </mxCell>
+
+    <mxCell id="pkg_shared" value="@atlasreforge/shared&#xa;QUEUES · JOB_NAMES&#xa;MigrationJobData · RagCrawlJobData" style="rounded=1;fillColor=#fef3c7;strokeColor=#fbbf24;fontSize=9;align=center;" vertex="1" parent="1">
+      <mxGeometry x="605" y="920" width="150" height="70" as="geometry" />
+    </mxCell>
+
+    <mxCell id="pkg_tsconfig" value="@atlasreforge/tsconfig&#xa;base.json" style="rounded=1;fillColor=#fef3c7;strokeColor=#fbbf24;fontSize=9;align=center;" vertex="1" parent="1">
+      <mxGeometry x="770" y="920" width="130" height="35" as="geometry" />
+    </mxCell>
+
+    <!-- ═══════════════════════════════════════════════════════════
+         ZONA: INFRA
+    ═══════════════════════════════════════════════════════════ -->
+    <mxCell id="z_infra" value="" style="rounded=1;arcSize=4;strokeColor=#1e3a5f;fillColor=#f0f9ff;dashed=0;strokeWidth=2;" vertex="1" parent="1">
+      <mxGeometry x="925" y="70" width="380" height="180" as="geometry" />
+    </mxCell>
+    <mxCell id="z_infra_label" value="🐳  INFRAESTRUCTURA (Docker Compose)" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=top;fontSize=12;fontStyle=1;fontColor=#1e3a5f;" vertex="1" parent="1">
+      <mxGeometry x="930" y="75" width="370" height="22" as="geometry" />
+    </mxCell>
+
+    <mxCell id="postgres" value="🐘 PostgreSQL 16&#xa;+ pgvector&#xa;RAG embeddings&#xa;init.sql" style="shape=mxgraph.azure.database;fillColor=#bfdbfe;strokeColor=#3b82f6;fontSize=10;align=center;fontStyle=1;" vertex="1" parent="1">
+      <mxGeometry x="940" y="105" width="120" height="110" as="geometry" />
+    </mxCell>
+
+    <mxCell id="nginx" value="🌐 Nginx&#xa;apps/web&#xa;Production SPA&#xa;Multi-stage Docker" style="shape=mxgraph.azure.load_balancer;fillColor=#d1fae5;strokeColor=#059669;fontSize=10;align=center;" vertex="1" parent="1">
+      <mxGeometry x="1175" y="105" width="120" height="110" as="geometry" />
+    </mxCell>
+
+    <mxCell id="redis_infra" value="🔴 Redis 7&#xa;BullMQ Queues&#xa;256MB · LRU&#xa;AOF persistence" style="shape=mxgraph.azure.cache;fillColor=#fee2e2;strokeColor=#dc2626;fontSize=10;align=center;fontStyle=1;" vertex="1" parent="1">
+      <mxGeometry x="1075" y="105" width="85" height="110" as="geometry" />
+    </mxCell>
+
+    <!-- ═══════════════════════════════════════════════════════════
+         ZONA: EXTERNAL APIS
+    ═══════════════════════════════════════════════════════════ -->
+    <mxCell id="z_external" value="" style="rounded=1;arcSize=4;strokeColor=#6d28d9;fillColor=#faf5ff;dashed=1;strokeWidth=1.5;" vertex="1" parent="1">
+      <mxGeometry x="1340" y="280" width="280" height="400" as="geometry" />
+    </mxCell>
+    <mxCell id="z_external_label" value="☁️  EXTERNAL APIs" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=top;fontSize=12;fontStyle=1;fontColor=#6d28d9;" vertex="1" parent="1">
+      <mxGeometry x="1345" y="285" width="270" height="22" as="geometry" />
+    </mxCell>
+
+    <mxCell id="openai" value="🟢 OpenAI&#xa;GPT-4o-mini&#xa;S1 Classifier · S2 Extractor&#xa;Embeddings (RAG)" style="rounded=1;fillColor=#d1fae5;strokeColor=#10b981;fontSize=10;align=center;fontStyle=1;" vertex="1" parent="1">
+      <mxGeometry x="1355" y="315" width="250" height="80" as="geometry" />
+    </mxCell>
+
+    <mxCell id="anthropic" value="🟤 Anthropic&#xa;Claude Sonnet 4.6&#xa;S4 Forge · S4b Automation&#xa;S4 SIL→Forge · S4 SR Cloud" style="rounded=1;fillColor=#fef3c7;strokeColor=#f59e0b;fontSize=10;align=center;fontStyle=1;" vertex="1" parent="1">
+      <mxGeometry x="1355" y="415" width="250" height="80" as="geometry" />
+    </mxCell>
+
+    <mxCell id="atlassian" value="🔵 Atlassian Cloud&#xa;REST API v3&#xa;POST /automation/import&#xa;Field validation · User resolution" style="rounded=1;fillColor=#dbeafe;strokeColor=#3b82f6;fontSize=10;align=center;fontStyle=1;" vertex="1" parent="1">
+      <mxGeometry x="1355" y="515" width="250" height="80" as="geometry" />
+    </mxCell>
+
+    <mxCell id="atlassian_docs" value="📚 developer.atlassian.com&#xa;scriptrunner.adaptavist.com&#xa;RAG crawl (weekly BullMQ)" style="rounded=1;fillColor=#f0f9ff;strokeColor=#7dd3fc;fontSize=10;align=center;" vertex="1" parent="1">
+      <mxGeometry x="1355" y="615" width="250" height="55" as="geometry" />
+    </mxCell>
+
+    <!-- ═══════════════════════════════════════════════════════════
+         FLUJO PRINCIPAL — FLECHAS
+    ═══════════════════════════════════════════════════════════ -->
+
+    <!-- User → Frontend -->
+    <mxCell id="e1" value="sube archivo" style="edgeStyle=orthogonalEdgeStyle;strokeColor=#6b7280;fontSize=9;" edge="1" parent="1" source="file_groovy" target="upload_page">
+      <mxGeometry relative="1" as="geometry" />
+    </mxCell>
+    <mxCell id="e1b" value="" style="edgeStyle=orthogonalEdgeStyle;strokeColor=#6b7280;fontSize=9;" edge="1" parent="1" source="file_sil" target="upload_page">
+      <mxGeometry relative="1" as="geometry" />
+    </mxCell>
+    <mxCell id="e1c" value="" style="edgeStyle=orthogonalEdgeStyle;strokeColor=#f59e0b;fontSize=9;" edge="1" parent="1" source="file_xml" target="upload_page">
+      <mxGeometry relative="1" as="geometry" />
+    </mxCell>
+
+    <!-- Frontend → API -->
+    <mxCell id="e2" value="POST /jobs&#xa;multipart" style="edgeStyle=orthogonalEdgeStyle;strokeColor=#7c3aed;fontStyle=1;fontSize=10;" edge="1" parent="1" source="upload_page" target="jobs_ctrl">
+      <mxGeometry relative="1" as="geometry" />
+    </mxCell>
+
+    <!-- API → Redis (enqueue) -->
+    <mxCell id="e3" value="enqueue" style="edgeStyle=orthogonalEdgeStyle;strokeColor=#dc2626;fontSize=9;" edge="1" parent="1" source="bullmq_producer" target="redis_infra">
+      <mxGeometry relative="1" as="geometry" />
+    </mxCell>
+
+    <!-- Redis → Worker (dequeue) -->
+    <mxCell id="e4" value="consume" style="edgeStyle=orthogonalEdgeStyle;strokeColor=#dc2626;fontSize=9;" edge="1" parent="1" source="redis_infra" target="migration_worker">
+      <mxGeometry relative="1" as="geometry" />
+    </mxCell>
+
+    <!-- Frontend polling -->
+    <mxCell id="e5" value="GET /status&#xa;polling" style="edgeStyle=orthogonalEdgeStyle;strokeColor=#7c3aed;dashed=1;fontSize=9;" edge="1" parent="1" source="workspace_page" target="jobs_ctrl">
+      <mxGeometry relative="1" as="geometry" />
+    </mxCell>
+
+    <!-- Worker → Parser -->
+    <mxCell id="e6" value="parse()" style="edgeStyle=orthogonalEdgeStyle;strokeColor=#0891b2;fontSize=9;fontStyle=1;" edge="1" parent="1" source="migration_worker" target="z_parser">
+      <mxGeometry relative="1" as="geometry" />
+    </mxCell>
+
+    <!-- Worker → LLM Pipeline -->
+    <mxCell id="e7" value="orchestrator.run()" style="edgeStyle=orthogonalEdgeStyle;strokeColor=#dc2626;fontSize=9;fontStyle=1;" edge="1" parent="1" source="migration_worker" target="s1">
+      <mxGeometry relative="1" as="geometry" />
+    </mxCell>
+
+    <!-- S1→S2→S3 chain -->
+    <mxCell id="e8" style="edgeStyle=orthogonalEdgeStyle;strokeColor=#f97316;fontSize=9;" edge="1" parent="1" source="s1" target="s2">
+      <mxGeometry relative="1" as="geometry" />
+    </mxCell>
+    <mxCell id="e9" style="edgeStyle=orthogonalEdgeStyle;strokeColor=#f97316;fontSize=9;" edge="1" parent="1" source="s2" target="s3">
+      <mxGeometry relative="1" as="geometry" />
+    </mxCell>
+    <mxCell id="e10" style="edgeStyle=orthogonalEdgeStyle;strokeColor=#f97316;fontSize=9;" edge="1" parent="1" source="s3" target="s4_decision">
+      <mxGeometry relative="1" as="geometry" />
+    </mxCell>
+
+    <!-- Decision → S4 / S4b -->
+    <mxCell id="e11" value="forge/SR/SIL" style="edgeStyle=orthogonalEdgeStyle;strokeColor=#ef4444;fontSize=9;" edge="1" parent="1" source="s4_decision" target="s4_forge">
+      <mxGeometry relative="1" as="geometry" />
+    </mxCell>
+    <mxCell id="e12" value="automation-native" style="edgeStyle=orthogonalEdgeStyle;strokeColor=#3b82f6;fontSize=9;" edge="1" parent="1" source="s4_decision" target="s4b">
+      <mxGeometry relative="1" as="geometry" />
+    </mxCell>
+
+    <!-- S4 → S5 -->
+    <mxCell id="e13" style="edgeStyle=orthogonalEdgeStyle;strokeColor=#f97316;" edge="1" parent="1" source="s4_forge" target="s5">
+      <mxGeometry relative="1" as="geometry" />
+    </mxCell>
+    <mxCell id="e13b" value="skip S5" style="edgeStyle=orthogonalEdgeStyle;strokeColor=#3b82f6;dashed=1;fontSize=9;" edge="1" parent="1" source="s4b" target="s5">
+      <mxGeometry relative="1" as="geometry" />
+    </mxCell>
+
+    <!-- S1 → OpenAI -->
+    <mxCell id="e14" value="classify" style="edgeStyle=orthogonalEdgeStyle;strokeColor=#10b981;dashed=1;fontSize=9;" edge="1" parent="1" source="s1" target="openai">
+      <mxGeometry relative="1" as="geometry" />
+    </mxCell>
+    <mxCell id="e14b" value="extract" style="edgeStyle=orthogonalEdgeStyle;strokeColor=#10b981;dashed=1;fontSize=9;" edge="1" parent="1" source="s2" target="openai">
+      <mxGeometry relative="1" as="geometry" />
+    </mxCell>
+
+    <!-- S4 → Anthropic -->
+    <mxCell id="e15" value="generate" style="edgeStyle=orthogonalEdgeStyle;strokeColor=#f59e0b;dashed=1;fontSize=9;" edge="1" parent="1" source="s4_forge" target="anthropic">
+      <mxGeometry relative="1" as="geometry" />
+    </mxCell>
+    <mxCell id="e15b" value="" style="edgeStyle=orthogonalEdgeStyle;strokeColor=#f59e0b;dashed=1;fontSize=9;" edge="1" parent="1" source="s4b" target="anthropic">
+      <mxGeometry relative="1" as="geometry" />
+    </mxCell>
+
+    <!-- S3 → pgvector -->
+    <mxCell id="e16" value="vector search" style="edgeStyle=orthogonalEdgeStyle;strokeColor=#3b82f6;dashed=1;fontSize=9;" edge="1" parent="1" source="s3" target="postgres">
+      <mxGeometry relative="1" as="geometry" />
+    </mxCell>
+
+    <!-- Automation tab → AutomationController -->
+    <mxCell id="e17" value="POST /automation/import" style="edgeStyle=orthogonalEdgeStyle;strokeColor=#3b82f6;fontSize=9;" edge="1" parent="1" source="tab_automation" target="automation_ctrl">
+      <mxGeometry relative="1" as="geometry" />
+    </mxCell>
+
+    <!-- AutomationController → Atlassian -->
+    <mxCell id="e18" value="proxy (Basic Auth)" style="edgeStyle=orthogonalEdgeStyle;strokeColor=#3b82f6;dashed=1;fontSize=9;" edge="1" parent="1" source="automation_ctrl" target="atlassian">
+      <mxGeometry relative="1" as="geometry" />
+    </mxCell>
+
+    <!-- RegistryPanel → RegistryController -->
+    <mxCell id="e19" value="PATCH /registry" style="edgeStyle=orthogonalEdgeStyle;strokeColor=#7c3aed;dashed=1;fontSize=9;" edge="1" parent="1" source="registry_panel" target="registry_ctrl">
+      <mxGeometry relative="1" as="geometry" />
+    </mxCell>
+
+    <!-- RAG Worker → Atlassian Docs -->
+    <mxCell id="e20" value="weekly crawl" style="edgeStyle=orthogonalEdgeStyle;strokeColor=#7dd3fc;dashed=1;fontSize=9;" edge="1" parent="1" source="rag_worker" target="atlassian_docs">
+      <mxGeometry relative="1" as="geometry" />
+    </mxCell>
+
+    <!-- RAG Worker → pgvector (embeddings) -->
+    <mxCell id="e21" value="store embeddings" style="edgeStyle=orthogonalEdgeStyle;strokeColor=#3b82f6;dashed=1;fontSize=9;" edge="1" parent="1" source="rag_worker" target="postgres">
+      <mxGeometry relative="1" as="geometry" />
+    </mxCell>
+
+    <!-- API → BullMQ Producer (internal) -->
+    <mxCell id="e22" style="edgeStyle=orthogonalEdgeStyle;strokeColor=#7c3aed;fontSize=9;" edge="1" parent="1" source="jobs_ctrl" target="bullmq_producer">
+      <mxGeometry relative="1" as="geometry" />
+    </mxCell>
+
+    <!-- ═══════════════════════════════════════════════════════════
+         LEYENDA
+    ═══════════════════════════════════════════════════════════ -->
+    <mxCell id="legend_title" value="LEYENDA" style="text;html=1;strokeColor=none;fillColor=none;fontSize=10;fontStyle=1;fontColor=#374151;" vertex="1" parent="1">
+      <mxGeometry x="30" y="680" width="200" height="20" as="geometry" />
+    </mxCell>
+    <mxCell id="leg1" value="🟢 GREEN — Direct migration" style="text;html=1;strokeColor=none;fillColor=none;fontSize=9;align=left;" vertex="1" parent="1">
+      <mxGeometry x="30" y="700" width="200" height="18" as="geometry" />
+    </mxCell>
+    <mxCell id="leg2" value="🟡 YELLOW — Paradigm shift needed" style="text;html=1;strokeColor=none;fillColor=none;fontSize=9;align=left;" vertex="1" parent="1">
+      <mxGeometry x="30" y="718" width="200" height="18" as="geometry" />
+    </mxCell>
+    <mxCell id="leg3" value="🔴 RED — Architectural blocker" style="text;html=1;strokeColor=none;fillColor=none;fontSize=9;align=left;" vertex="1" parent="1">
+      <mxGeometry x="30" y="736" width="200" height="18" as="geometry" />
+    </mxCell>
+    <mxCell id="leg4" value="🔵 BLUE — Automation-native (no code)" style="text;html=1;strokeColor=none;fillColor=none;fontSize=9;align=left;" vertex="1" parent="1">
+      <mxGeometry x="30" y="754" width="200" height="18" as="geometry" />
+    </mxCell>
+    <mxCell id="leg5" value="CR-001–045 Cloud Readiness Rules" style="text;html=1;strokeColor=none;fillColor=none;fontSize=9;align=left;" vertex="1" parent="1">
+      <mxGeometry x="30" y="772" width="200" height="18" as="geometry" />
+    </mxCell>
+    <mxCell id="leg6" value="pnpm workspaces · Turbo · Vitest" style="text;html=1;strokeColor=none;fillColor=none;fontSize=9;align=left;fontStyle=2;" vertex="1" parent="1">
+      <mxGeometry x="30" y="800" width="200" height="18" as="geometry" />
+    </mxCell>
+
+  </root>
+</mxGraphModel>
