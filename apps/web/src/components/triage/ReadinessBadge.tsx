@@ -25,7 +25,9 @@ const SIZE = {
 };
 
 export function ReadinessBadge({ level, score, size = 'md' }: Props): React.ReactElement {
-  const { emoji, label, bg, fg, border } = CONFIG[level];
+  // Guard: if level is missing or unexpected, default to 'red'
+  const safeLevel = (level && level in CONFIG) ? level : 'red';
+  const { emoji, label, bg, fg, border } = CONFIG[safeLevel];
   const { fontSize, padding, emojiSize } = SIZE[size];
 
   return (
@@ -52,3 +54,4 @@ export function ReadinessBadge({ level, score, size = 'md' }: Props): React.Reac
     </span>
   );
 }
+

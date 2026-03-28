@@ -183,27 +183,95 @@ export class LlmProviderError extends Error {
   }
 }
 
-// ─── JSON parser helper ───────────────────────────────────────────────────────
-
 /**
  * Strips accidental markdown fences and parses JSON.
  * Used by all stages that expect JSON-only LLM output.
+ *
+ * Strategy:
+ *   1. Try direct parse (ideal — model returned clean JSON)
+ *   2. Strip markdown fences and retry
+ *   3. Extract the first top-level JSON object ({...}) via brace matching
+ *   4. If all fail, throw JsonParseError
  */
 export function parseJsonResponse<T>(raw: string): T {
-  const cleaned = raw
-    .replace(/^```json\s*/im, '')
-    .replace(/^```\s*/im, '')
+  // 1. Try direct parse
+  const trimmed = raw.trim();
+  try {
+    return JSON.parse(trimmed) as T;
+  } catch {
+    // continue to next strategy
+  }
+
+  // 2. Strip markdown fences (```json ... ``` or ``` ... ```)
+  const cleaned = trimmed
+    .replace(/^```(?:json)?\s*/im, '')
     .replace(/```\s*$/im, '')
     .trim();
 
   try {
     return JSON.parse(cleaned) as T;
-  } catch (cause) {
-    throw new JsonParseError(
-      `Failed to parse LLM JSON response: ${(cause as Error).message}`,
-      cleaned,
-    );
+  } catch {
+    // continue to next strategy
   }
+
+  // 3. Extract first top-level JSON object via brace matching
+  const extracted = extractJsonObject(cleaned);
+  if (extracted) {
+    try {
+      return JSON.parse(extracted) as T;
+    } catch {
+      // fall through to error
+    }
+  }
+
+  throw new JsonParseError(
+    `Failed to parse LLM JSON response after all extraction strategies`,
+    raw.slice(0, 500),
+  );
+}
+
+/**
+ * Extracts the first balanced JSON object ({...}) from a string.
+ * Handles nested braces, string literals with escaped chars, etc.
+ */
+function extractJsonObject(text: string): string | null {
+  const start = text.indexOf('{');
+  if (start === -1) return null;
+
+  let depth = 0;
+  let inString = false;
+  let escaped = false;
+
+  for (let i = start; i < text.length; i++) {
+    const ch = text[i];
+
+    if (escaped) {
+      escaped = false;
+      continue;
+    }
+
+    if (ch === '\\' && inString) {
+      escaped = true;
+      continue;
+    }
+
+    if (ch === '"') {
+      inString = !inString;
+      continue;
+    }
+
+    if (inString) continue;
+
+    if (ch === '{') depth++;
+    else if (ch === '}') {
+      depth--;
+      if (depth === 0) {
+        return text.slice(start, i + 1);
+      }
+    }
+  }
+
+  return null; // Unbalanced braces
 }
 
 export class JsonParseError extends Error {

@@ -76,6 +76,16 @@ function ConfidenceRow({ label, score, note, requiresHumanReview }: {
 // ─── Summary tab ─────────────────────────────────────────────────────────────
 
 function SummaryTab({ result }: { result: NonNullable<ReturnType<typeof useJobPolling>['result']> }): React.ReactElement {
+  // Safe defaults for fields that may be null when S4 fails
+  const businessLogic = result.businessLogic ?? {
+    triggerDescription: 'Analysis not available',
+    purposeNarrative: 'The code generator did not produce a business logic summary.',
+    inputConditions: [] as string[],
+    outputActions: [] as string[],
+  };
+  const confidence = result.confidence ?? null;
+  const effort = result.estimatedEffortHours ?? { consultantHours: 0, aiAssistedHours: 0, savingsPercent: 0 };
+
   return (
     <div style={{ padding: '20px', overflowY: 'auto', flex: 1 }}>
 
@@ -132,32 +142,32 @@ function SummaryTab({ result }: { result: NonNullable<ReturnType<typeof useJobPo
       </div>
 
       <RoiBar
-        consultantHours={result.estimatedEffortHours.consultantHours}
-        aiHours={result.estimatedEffortHours.aiAssistedHours}
-        savingsPercent={result.estimatedEffortHours.savingsPercent}
+        consultantHours={effort.consultantHours}
+        aiHours={effort.aiAssistedHours}
+        savingsPercent={effort.savingsPercent}
       />
 
       <div style={{ marginTop: '20px', marginBottom: '20px' }}>
         <h3 style={{ fontSize: '14px', fontWeight: 600, color: '#374151', marginBottom: '12px' }}>Business Logic</h3>
         <div style={{ background: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: '8px', padding: '16px' }}>
           <p style={{ margin: '0 0 8px', fontSize: '14px', color: '#374151', fontWeight: 500 }}>
-            {result.businessLogic.triggerDescription}
+            {businessLogic.triggerDescription}
           </p>
           <p style={{ margin: '0 0 12px', fontSize: '13px', color: '#6b7280', lineHeight: 1.6 }}>
-            {result.businessLogic.purposeNarrative}
+            {businessLogic.purposeNarrative}
           </p>
-          {result.businessLogic.inputConditions.length > 0 && (
+          {businessLogic.inputConditions.length > 0 && (
             <div style={{ marginBottom: '8px' }}>
               <strong style={{ fontSize: '12px', color: '#374151' }}>Conditions:</strong>
-              {result.businessLogic.inputConditions.map((c, i) => (
+              {businessLogic.inputConditions.map((c: string, i: number) => (
                 <div key={i} style={{ fontSize: '12px', color: '#6b7280', marginLeft: '12px' }}>• {c}</div>
               ))}
             </div>
           )}
-          {result.businessLogic.outputActions.length > 0 && (
+          {businessLogic.outputActions.length > 0 && (
             <div>
               <strong style={{ fontSize: '12px', color: '#374151' }}>Actions:</strong>
-              {result.businessLogic.outputActions.map((a, i) => (
+              {businessLogic.outputActions.map((a: string, i: number) => (
                 <div key={i} style={{ fontSize: '12px', color: '#6b7280', marginLeft: '12px' }}>• {a}</div>
               ))}
             </div>
@@ -165,16 +175,18 @@ function SummaryTab({ result }: { result: NonNullable<ReturnType<typeof useJobPo
         </div>
       </div>
 
-      <div style={{ marginBottom: '20px' }}>
-        <h3 style={{ fontSize: '14px', fontWeight: 600, color: '#374151', marginBottom: '12px' }}>Confidence Scores</h3>
-        <ConfidenceRow label="Field Mapping"   {...result.confidence.fieldMapping}   />
-        <ConfidenceRow label="Webhook Logic"   {...result.confidence.webhookLogic}   />
-        <ConfidenceRow label="User Resolution" {...result.confidence.userResolution} />
-        <ConfidenceRow label="OAuth Scopes"    {...result.confidence.oauthScopes}    />
-        <ConfidenceRow label="Overall"         {...result.confidence.overallMigration} />
-      </div>
+      {confidence !== null && (
+        <div style={{ marginBottom: '20px' }}>
+          <h3 style={{ fontSize: '14px', fontWeight: 600, color: '#374151', marginBottom: '12px' }}>Confidence Scores</h3>
+          <ConfidenceRow label="Field Mapping"   {...confidence.fieldMapping}   />
+          <ConfidenceRow label="Webhook Logic"   {...confidence.webhookLogic}   />
+          <ConfidenceRow label="User Resolution" {...confidence.userResolution} />
+          <ConfidenceRow label="OAuth Scopes"    {...confidence.oauthScopes}    />
+          <ConfidenceRow label="Overall"         {...confidence.overallMigration} />
+        </div>
+      )}
 
-      {result.oauthScopes.length > 0 && (
+      {(result.oauthScopes?.length ?? 0) > 0 && (
         <div>
           <h3 style={{ fontSize: '14px', fontWeight: 600, color: '#374151', marginBottom: '8px' }}>OAuth Scopes Required</h3>
           <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
@@ -628,10 +640,10 @@ function ManualRewriteTab({ result }: {
           📋 Original script purpose
         </h3>
         <p style={{ fontSize: '13px', color: '#6b7280', margin: '0 0 8px', lineHeight: 1.6 }}>
-          {result.businessLogic.triggerDescription}
+          {result.businessLogic?.triggerDescription ?? 'Analysis not available'}
         </p>
         <p style={{ fontSize: '13px', color: '#374151', margin: 0, lineHeight: 1.6 }}>
-          {result.businessLogic.purposeNarrative}
+          {result.businessLogic?.purposeNarrative ?? 'No business logic summary available.'}
         </p>
       </div>
     </div>
