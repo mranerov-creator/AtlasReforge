@@ -613,6 +613,162 @@ const RULES: ReadonlyArray<CompatibilityRule> = [
       };
     },
   },
+
+  // ── SCRIPTRUNNER (GROOVY) rules (CR-041–045) ─────────────────────────────
+
+  {
+    code: 'CR-041',
+    evaluate: (deps, ctx) => {
+      if (ctx.language !== 'groovy') return null;
+      if (ctx.moduleType !== 'behaviour') return null;
+      // SR Behaviours — DOM manipulation, hard red blocker in Cloud
+      const behaviourApis = deps.deprecatedApis.filter(
+        (a) => a.deprecationReason === 'behaviour-dom',
+      );
+      return {
+        level: 'red',
+        category: 'behaviour-dom',
+        title: '🔴 ScriptRunner Behaviour — DOM manipulation forbidden in Atlassian Cloud',
+        description:
+          'ScriptRunner Behaviours use getFieldById(), setHidden(), setRequired() etc. to ' +
+          'manipulate Jira form fields in the browser. Atlassian Cloud strictly forbids all ' +
+          'direct DOM access. This is the highest-cost migration blocker in ScriptRunner. ' +
+          'On average, Behaviour migrations consume 30-40% of total ScriptRunner migration budgets.',
+        affectedExpression: behaviourApis.map((a) => a.methodCall).slice(0, 4).join(', ') ||
+          'getFieldById / setHidden / setRequired',
+        lineNumber: behaviourApis[0]?.lineNumber ?? null,
+        cloudAlternative:
+          'Two migration paths: ' +
+          '(1) Jira UI Modifications API — lightweight, supports hide/show/require on standard ' +
+          'fields without React. POST /rest/api/3/uiModifications. Best for simple field visibility. ' +
+          '(2) Forge Custom UI (React) — full rebuild of the form experience. Required for complex ' +
+          'interactions like dynamic dropdowns, field dependencies, or AJAX lookups. ' +
+          'Use jira:issuePanel or jira:issueAction module in manifest.yml.',
+        requiresFieldMappingRegistry: false,
+      };
+    },
+  },
+
+  {
+    code: 'CR-042',
+    evaluate: (deps, ctx) => {
+      if (ctx.language !== 'groovy') return null;
+      if (ctx.moduleType !== 'script-fragment') return null;
+      const velocityApis = deps.deprecatedApis.filter(
+        (a) => a.deprecationReason === 'velocity-template',
+      );
+      return {
+        level: 'red',
+        category: 'velocity-injection',
+        title: '🔴 ScriptRunner Script Fragment — Velocity/HTML injection has no Cloud equivalent',
+        description:
+          'ScriptRunner Script Fragments (Web Items / Web Panels) inject HTML content or ' +
+          'Velocity (.vm) templates directly into the Jira UI. ' +
+          'Velocity and direct HTML injection are not supported in Atlassian Cloud.',
+        affectedExpression: velocityApis.map((a) => a.methodCall).slice(0, 2).join(', ') ||
+          'Velocity template / WebPanel / WebItem',
+        lineNumber: velocityApis[0]?.lineNumber ?? null,
+        cloudAlternative:
+          'Rebuild as a Forge module: ' +
+          '(1) jira:issuePanel — injects a panel into the issue detail view (most common). ' +
+          '(2) jira:issueAction — adds a button action to the issue. ' +
+          '(3) jira:projectPage — adds a page under a project sidebar. ' +
+          'Use Forge UI Kit (React-like) for simple panels or Forge Custom UI (full React) ' +
+          'for complex panels that fetch external data.',
+        requiresFieldMappingRegistry: false,
+      };
+    },
+  },
+
+  {
+    code: 'CR-043',
+    evaluate: (deps, ctx) => {
+      if (ctx.language !== 'groovy') return null;
+      // MutableIssue direct mutation — synchronous pattern illegal in Cloud
+      const mutableApis = deps.deprecatedApis.filter(
+        (a) => a.deprecationReason === 'mutable-issue-sync',
+      );
+      if (mutableApis.length === 0) return null;
+      return {
+        level: 'yellow',
+        category: 'mutable-issue-sync',
+        title: `🟡 MutableIssue sync mutation — ${mutableApis.length} instance(s) require async rewrite`,
+        description:
+          'ScriptRunner Server/DC workflows can mutate MutableIssue objects synchronously in memory. ' +
+          'In Atlassian Cloud, issue mutations must go through REST API v3 asynchronously. ' +
+          'Critical paradigm shift: Cloud post-functions are async — the transition has ALREADY ' +
+          'completed before your code runs. You cannot cancel a transition that already occurred.',
+        affectedExpression: mutableApis.map((a) => a.methodCall).slice(0, 3).join(', '),
+        lineNumber: mutableApis[0]?.lineNumber ?? null,
+        cloudAlternative:
+          'Replace all MutableIssue mutations with requestJira() calls from @forge/api: ' +
+          'PUT /rest/api/3/issue/{key} for field updates, ' +
+          'POST /rest/api/3/issue/{key}/transitions for status changes. ' +
+          'For pre-transition validation logic, use a Forge jira:workflowValidator instead of post-function.',
+        requiresFieldMappingRegistry: false,
+      };
+    },
+  },
+
+  {
+    code: 'CR-044',
+    evaluate: (deps, ctx) => {
+      if (ctx.language !== 'groovy') return null;
+      if (ctx.moduleType !== 'escalation-service') return null;
+      // Bulk JQL loops without pagination — guaranteed timeout in Cloud
+      const hasLargeBulkOp =
+        ctx.linesOfCode > 30 ||
+        deps.internalApiCalls.some((c) => c.endpoint.includes('search'));
+      if (!hasLargeBulkOp) return null;
+      return {
+        level: 'yellow',
+        category: 'bulk-operation-timeout',
+        title: '🟡 SR Escalation Service — bulk JQL iteration will timeout in Cloud (25s limit)',
+        description:
+          'ScriptRunner Escalation Services iterate over potentially thousands of issues in memory. ' +
+          'In Server, a loop over 10,000 tickets completes in seconds (in-JVM). ' +
+          'In Cloud, each issue requires a REST API call. At ~50ms/call, ' +
+          '500 issues = 25 seconds = Forge timeout. Rate limits will block further calls.',
+        affectedExpression: 'Bulk JQL search + iteration',
+        lineNumber: null,
+        cloudAlternative:
+          'Three-layer solution for Cloud bulk operations: ' +
+          '(1) Pagination: maxResults=100, loop with startAt until total exhausted. ' +
+          '(2) Batching: process 100 issues per Forge scheduledTrigger invocation, ' +
+          'store cursor in Forge Storage API, resume on next scheduled run. ' +
+          '(3) Rate limit handling: implement exponential backoff on 429 responses. ' +
+          'For very large datasets (>10K issues), consider Forge Remote with a queue-based architecture.',
+        requiresFieldMappingRegistry: false,
+      };
+    },
+  },
+
+  {
+    code: 'CR-045',
+    evaluate: (deps, ctx) => {
+      if (ctx.language !== 'groovy') return null;
+      // SR Scripted Fields — performance issue in Cloud (same as SIL scripted-field)
+      if (ctx.moduleType !== 'scripted-field') return null;
+      return {
+        level: 'yellow',
+        category: 'scripted-field-perf',
+        title: '🟡 SR Scripted Field — on-read Groovy compute blocked in Cloud',
+        description:
+          'ScriptRunner Scripted Fields execute Groovy code every time a user opens an issue ' +
+          'or runs a filter. Atlassian Cloud prohibits runtime-computed custom fields — ' +
+          'the REST API cannot execute arbitrary Groovy on read.',
+        affectedExpression: 'Scripted Field module',
+        lineNumber: null,
+        cloudAlternative:
+          'Invert the architecture: ' +
+          '(1) Create a regular Jira custom field to store the calculated value. ' +
+          '(2) Create a Forge jira:issueUpdated listener that recalculates and writes the field ' +
+          'value whenever its source fields change (event-driven, not on-read). ' +
+          '(3) For initial population, run a one-off Forge scheduledTrigger migration job.',
+        requiresFieldMappingRegistry: true,
+      };
+    },
+  },
 ];
 
 // ─── Automation Suitability Analysis ─────────────────────────────────────────
@@ -840,6 +996,23 @@ function resolveMigrationTarget(
   const hasFilesystem = issues.some(
     (i) => i.category === 'filesystem-access',
   );
+
+  // ── ScriptRunner (Groovy) specific target rules ──────────────────────────
+  const hasBehaviour     = issues.some((i) => i.category === 'behaviour-dom');
+  const hasVelocity      = issues.some((i) => i.category === 'velocity-injection');
+  const isEscalation     = ctx.moduleType === 'escalation-service';
+  const isSrRestEndpoint = ctx.moduleType === 'sil-rest-endpoint' && ctx.language === 'groovy';
+  const isSrScriptFrag   = ctx.moduleType === 'script-fragment';
+
+  // Behaviours and Velocity fragments → forge-native (UI Modifications or Custom UI)
+  // Not manual-rewrite because Forge provides viable paths (UI Mods or React)
+  if (hasBehaviour || hasVelocity || isSrScriptFrag) return 'forge-native';
+
+  // Escalation services → forge-native (scheduledTrigger with batching)
+  if (isEscalation) return 'forge-native';
+
+  // SR REST endpoints → forge-native (Forge webtrigger)
+  if (isSrRestEndpoint) return 'forge-native';
 
   // ── SIL-specific target rules ───────────────────────────────────────────
   // Live Fields (DOM) and LDAP are hard manual-rewrite blockers
