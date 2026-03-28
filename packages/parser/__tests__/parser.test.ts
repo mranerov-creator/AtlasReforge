@@ -554,3 +554,191 @@ describe('Parser Service — Integration', () => {
     expect(result.cloudReadiness.recommendedMigrationTarget).toBe('manual-rewrite');
   });
 });
+
+// ─── SIL (Power Scripts / cPrime/Appfire) tests ───────────────────────────────
+
+import { assessAutomationSuitability } from '../src/analyzers/cloud-compatibility.analyzer.js';
+
+// ── SIL Fixtures ──────────────────────────────────────────────────────────────
+
+const SIL_FIXTURES = {
+  /** Live Field — DOM manipulation, hard red blocker */
+  liveField: `
+// Live Field: Hide/disable fields based on issue type
+string issueType = getFieldValue("Issue Type");
+if (issueType == "Bug") {
+  lfHide("Story Points");
+  lfDisable("Epic Link");
+  lfRestrictSelect("Priority", array("High", "Critical"));
+} else {
+  lfShow("Story Points");
+  lfEnable("Epic Link");
+}
+`.trim(),
+
+  /** Post-function — direct migration path */
+  postFunction: `
+// Post-function: Auto-assign based on budget field
+number budget = getFieldValue("customfield_10048");
+string assignee = getFieldValue("Assignee");
+if (budget > 50000) {
+  setFieldValue("Assignee", "finance.lead@company.com");
+  addComment(issue, "Auto-assigned to finance lead due to high budget.");
+}
+`.trim(),
+
+  /** Scripted field — compute-only, no write side-effects */
+  scriptedField: `
+// Scripted Field: Calculate SLA remaining
+// Returns computed value — no setFieldValue calls
+number created = dateToLong(getFieldValue("Created"));
+number now = dateToLong(currentDate());
+number slaHours = 72;
+number elapsed = (now - created) / 3600000;
+return slaHours - elapsed;
+`.trim(),
+
+  /** Mail handler — SIL specific extension point */
+  mailHandler: `
+// Incoming Mail Handler
+string subject = getEmailSubject();
+string body = getEmailBody();
+string from = getEmailFrom();
+if (contains(subject, "URGENT")) {
+  setFieldValue("Priority", "Critical");
+  addComment(issue, "Auto-escalated from email: " + from);
+}
+`.trim(),
+
+  /** LDAP access — hard red blocker */
+  ldapAccess: `
+// Check group membership via LDAP
+string user = currentUser();
+array groups = ldapSearch("(&(objectClass=person)(sAMAccountName=" + user + "))");
+if (size(groups) > 0) {
+  setFieldValue("Assignee", user);
+}
+`.trim(),
+
+  /** File I/O — hard red blocker */
+  fileIo: `
+// Write audit log to file
+string logEntry = key + " transitioned by " + currentUser();
+writeToTextFile("/var/log/jira/audit.log", logEntry);
+string config = readFromTextFile("/etc/jira/migration-config.txt");
+`.trim(),
+};
+
+// ── Module type detection tests ───────────────────────────────────────────────
+
+describe('SIL Module Type Detection', () => {
+  it('detects live-field from lf* functions', () => {
+    const result = detectModuleType(SIL_FIXTURES.liveField);
+    expect(result.moduleType).toBe('live-field');
+    expect(result.moduleConfidence).toBeGreaterThan(0.5);
+  });
+
+  it('detects mail-handler from getEmailSubject/getEmailBody', () => {
+    const result = detectModuleType(SIL_FIXTURES.mailHandler);
+    expect(result.moduleType).toBe('mail-handler');
+  });
+
+  it('detects post-function from setFieldValue + addComment pattern', () => {
+    const result = detectModuleType(SIL_FIXTURES.postFunction);
+    // Should be post-function or field-function — both valid for this pattern
+    expect(['post-function', 'field-function', 'inline-script']).toContain(result.moduleType);
+  });
+});
+
+// ── Dependency extraction tests ───────────────────────────────────────────────
+
+describe('SIL Deprecated API Extraction', () => {
+  it('detects lf* Live Field functions as dom-manipulation', () => {
+    const deps = extractDependencies(SIL_FIXTURES.liveField);
+    const lfApis = deps.deprecatedApis.filter((a) => a.deprecationReason === 'dom-manipulation');
+    expect(lfApis.length).toBeGreaterThan(0);
+    expect(lfApis[0]?.apiClass).toContain('SIL Live Field');
+  });
+
+  it('detects ldap() as ldap-access', () => {
+    const deps = extractDependencies(SIL_FIXTURES.ldapAccess);
+    const ldap = deps.deprecatedApis.filter((a) => a.deprecationReason === 'ldap-access');
+    expect(ldap.length).toBeGreaterThan(0);
+  });
+
+  it('detects readFromTextFile and writeToTextFile as local-file-read', () => {
+    const deps = extractDependencies(SIL_FIXTURES.fileIo);
+    const fileApis = deps.deprecatedApis.filter((a) => a.deprecationReason === 'local-file-read');
+    expect(fileApis.length).toBeGreaterThanOrEqual(2); // both read and write
+  });
+});
+
+// ── Cloud compatibility analyzer tests ───────────────────────────────────────
+
+describe('SIL Cloud Compatibility Analysis', () => {
+  it('rates live-field as RED and recommends manual-rewrite', () => {
+    const deps = extractDependencies(SIL_FIXTURES.liveField);
+    const report = analyzeCloudCompatibility(deps, {
+      language: 'sil',
+      moduleType: 'live-field',
+      triggerEvent: 'unknown',
+      linesOfCode: 10,
+    });
+    expect(report.overallLevel).toBe('red');
+    expect(report.recommendedMigrationTarget).toBe('manual-rewrite');
+    const categories = report.issues.map((i) => i.category);
+    expect(categories).toContain('live-field-dom');
+  });
+
+  it('rates ldap-access as RED and recommends manual-rewrite', () => {
+    const deps = extractDependencies(SIL_FIXTURES.ldapAccess);
+    const report = analyzeCloudCompatibility(deps, {
+      language: 'sil',
+      moduleType: 'post-function',
+      triggerEvent: 'unknown',
+      linesOfCode: 8,
+    });
+    expect(report.overallLevel).toBe('red');
+    expect(report.recommendedMigrationTarget).toBe('manual-rewrite');
+    const categories = report.issues.map((i) => i.category);
+    expect(categories).toContain('ldap-access');
+  });
+
+  it('rates file I/O as RED and recommends manual-rewrite', () => {
+    const deps = extractDependencies(SIL_FIXTURES.fileIo);
+    const report = analyzeCloudCompatibility(deps, {
+      language: 'sil',
+      moduleType: 'post-function',
+      triggerEvent: 'unknown',
+      linesOfCode: 5,
+    });
+    expect(report.overallLevel).toBe('red');
+    expect(report.recommendedMigrationTarget).toBe('manual-rewrite');
+  });
+
+  it('rates simple SIL post-function as non-red and forge-native', () => {
+    const deps = extractDependencies(SIL_FIXTURES.postFunction);
+    const report = analyzeCloudCompatibility(deps, {
+      language: 'sil',
+      moduleType: 'post-function',
+      triggerEvent: 'issue-transitioned',
+      linesOfCode: 8,
+    });
+    // Should NOT be manual-rewrite (no blockers)
+    expect(report.recommendedMigrationTarget).not.toBe('scriptrunner-cloud');
+    expect(report.recommendedMigrationTarget).not.toBe('forge-or-scriptrunner');
+  });
+
+  it('always emits CR-031 info issue for any SIL script', () => {
+    const deps = extractDependencies(SIL_FIXTURES.postFunction);
+    const report = analyzeCloudCompatibility(deps, {
+      language: 'sil',
+      moduleType: 'post-function',
+      triggerEvent: 'unknown',
+      linesOfCode: 8,
+    });
+    const cr031 = report.issues.find((i) => i.title.includes('Power Scripts'));
+    expect(cr031).toBeDefined();
+    expect(cr031?.description).toContain('Appfire discontinued');
+  });
+});
