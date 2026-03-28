@@ -17,6 +17,7 @@
     "@atlasreforge/llm-orchestrator": "workspace:*",
     "@atlasreforge/parser": "workspace:*",
     "@atlasreforge/rag-engine": "workspace:*",
+    "@atlasreforge/shared": "workspace:*",
     "@nestjs/bullmq": "^10.2.3",
     "@nestjs/common": "^10.4.15",
     "@nestjs/core": "^10.4.15",
@@ -27,14 +28,14 @@
     "bullmq": "^5.34.9",
     "class-transformer": "^0.5.1",
     "class-validator": "^0.14.1",
+    "dotenv": "^17.3.1",
     "helmet": "^8.0.0",
     "ioredis": "^5.4.2",
     "multer": "^1.4.5-lts.1",
     "pg": "^8.13.1",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.1",
-    "uuid": "^11.0.5",
-    "@atlasreforge/shared": "workspace:*"
+    "uuid": "^11.0.5"
   },
   "devDependencies": {
     "@atlasreforge/tsconfig": "workspace:*",

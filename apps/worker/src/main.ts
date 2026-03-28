@@ -16,6 +16,7 @@
  *   - accessToken is used only for registry validation calls, never logged
  */
 
+import 'dotenv/config'; // Auto-load .env.local (API keys, DATABASE_URL, etc.)
 import http from 'node:http';
 import { Worker, type Job } from 'bullmq';
 import { ParserService } from '@atlasreforge/parser';

@@ -13,6 +13,7 @@
  *   - Rate limiting via @nestjs/throttler
  */
 
+import 'dotenv/config'; // Auto-load .env.local
 import { NestFactory } from '@nestjs/core';
 import {
   FastifyAdapter,
