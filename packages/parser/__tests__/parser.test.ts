@@ -406,6 +406,7 @@ describe('Cloud Compatibility Analyzer', () => {
     const report = analyzeCloudCompatibility(deps, {
       language: 'java',
       moduleType: 'post-function',
+      triggerEvent: 'unknown',
       linesOfCode: 30,
     });
     expect(report.overallLevel).toBe('red');
@@ -420,6 +421,7 @@ describe('Cloud Compatibility Analyzer', () => {
     const report = analyzeCloudCompatibility(deps, {
       language: 'groovy',
       moduleType: 'post-function',
+      triggerEvent: 'unknown',
       linesOfCode: 25,
     });
     expect(report.overallLevel).toBe('yellow');
@@ -433,6 +435,7 @@ describe('Cloud Compatibility Analyzer', () => {
     const report = analyzeCloudCompatibility(deps, {
       language: 'groovy',
       moduleType: 'listener',
+      triggerEvent: 'unknown',
       linesOfCode: 20,
     });
     // No deprecated APIs, no hardcoded IDs → should be green or yellow (due to group check)
@@ -445,6 +448,7 @@ describe('Cloud Compatibility Analyzer', () => {
     const report = analyzeCloudCompatibility(deps, {
       language: 'groovy',
       moduleType: 'post-function',
+      triggerEvent: 'unknown',
       linesOfCode: 20,
     });
     expect(report.recommendedMigrationTarget).toBe('forge-or-scriptrunner');
@@ -455,6 +459,7 @@ describe('Cloud Compatibility Analyzer', () => {
     const report = analyzeCloudCompatibility(deps, {
       language: 'java',
       moduleType: 'post-function',
+      triggerEvent: 'unknown',
       linesOfCode: 40,
     });
     expect(report.recommendedMigrationTarget).toBe('manual-rewrite');
@@ -465,6 +470,7 @@ describe('Cloud Compatibility Analyzer', () => {
     const report = analyzeCloudCompatibility(deps, {
       language: 'groovy',
       moduleType: 'post-function',
+      triggerEvent: 'unknown',
       linesOfCode: 25,
     });
     expect(report.estimatedEffortHours.consultantHours).toBeGreaterThan(0);

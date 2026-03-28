@@ -188,6 +188,7 @@ export class ParserService {
     const cloudReadiness = analyzeCloudCompatibility(dependencies, {
       language: langResult.language,
       moduleType: moduleResult.moduleType,
+      triggerEvent: moduleResult.triggerEvent,
       linesOfCode,
     });
 
@@ -298,6 +299,7 @@ function buildErrorShell(
       issues: [],
       recommendedMigrationTarget: 'manual-rewrite',
       estimatedEffortHours: { consultantHours: 0, aiAssistedHours: 0, savingsPercent: 0 },
+      automationSuitability: null,
     },
     businessLogic: null,
     parseStrategy: {

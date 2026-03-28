@@ -5,6 +5,9 @@
 // Types
 export type {
   AtlassianModuleType,
+  AutomationOperation,
+  AutomationRuleOutput,
+  AutomationSuitability,
   BusinessLogicSummary,
   CloudReadinessIssue,
   CloudReadinessLevel,
@@ -50,6 +53,7 @@ export { extractDependencies } from './extractors/dependency.extractor.js';
 // Analyzer
 export {
   analyzeCloudCompatibility,
+  assessAutomationSuitability,
   resolveComplexity,
 } from './analyzers/cloud-compatibility.analyzer.js';
 
