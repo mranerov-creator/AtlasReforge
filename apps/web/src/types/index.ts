@@ -23,6 +23,7 @@ export type MigrationTarget =
   | 'forge-remote'
   | 'scriptrunner-cloud'
   | 'forge-or-scriptrunner'
+  | 'automation-native'
   | 'manual-rewrite';
 
 export interface JobStatusResponse {
@@ -34,6 +35,21 @@ export interface JobStatusResponse {
   updatedAt: string;
   error: string | null;
   result: MigrationResult | null;
+}
+
+export interface AutomationRule {
+  ruleName: string;
+  ruleJson: string;
+  description: string;
+  limitations: string[];
+  postImportSteps: string[];
+}
+
+export interface AutomationConfidence {
+  triggerMapping: ConfidenceBlock;
+  conditionMapping: ConfidenceBlock;
+  actionMapping: ConfidenceBlock;
+  overallMigration: ConfidenceBlock;
 }
 
 export interface MigrationResult {
@@ -48,6 +64,8 @@ export interface MigrationResult {
   businessLogic: BusinessLogicSummary;
   forgeFiles: GeneratedFile[] | null;
   scriptRunnerCode: GeneratedFile | null;
+  /** Populated when recommendedTarget === 'automation-native'. Null otherwise. */
+  automationRule: AutomationRule | null;
   diagram: MermaidDiagram;
   oauthScopes: string[];
   confidence: ConfidenceMap;
@@ -176,7 +194,7 @@ export interface CompletionBlocker {
 
 // ─── UI state ─────────────────────────────────────────────────────────────────
 
-export type ActiveTab = 'summary' | 'forge' | 'scriptrunner' | 'diagram';
+export type ActiveTab = 'summary' | 'forge' | 'scriptrunner' | 'automation' | 'diagram';
 
 export interface WorkspaceState {
   jobId: string;

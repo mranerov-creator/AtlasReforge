@@ -23,7 +23,7 @@ import { ProgressPipeline } from '../components/triage/ProgressPipeline.jsx';
 import { SplitEditor } from '../components/editor/SplitEditor.jsx';
 import { MermaidDiagram } from '../components/diagram/MermaidDiagram.jsx';
 import { RegistryPanel } from '../components/registry/RegistryPanel.jsx';
-import type { ActiveTab } from '../types/index.js';
+import type { ActiveTab, AutomationRule } from '../types/index.js';
 
 // ─── ROI Bar ──────────────────────────────────────────────────────────────────
 
@@ -143,6 +143,176 @@ function SummaryTab({ result }: { result: NonNullable<ReturnType<typeof useJobPo
   );
 }
 
+
+// ─── Automation tab ───────────────────────────────────────────────────────────
+
+function CopyButton({ text }: { text: string }): React.ReactElement {
+  const [copied, setCopied] = React.useState(false);
+  const handleCopy = () => {
+    void navigator.clipboard.writeText(text).then(() => {
+      setCopied(true);
+      setTimeout(() => { setCopied(false); }, 2000);
+    });
+  };
+  return (
+    <button onClick={handleCopy} style={{
+      fontSize: '12px', padding: '4px 10px',
+      border: '1px solid #d1d5db', borderRadius: '5px',
+      background: copied ? '#f0fdf4' : '#fff',
+      color: copied ? '#15803d' : '#374151',
+      cursor: 'pointer', fontWeight: 500, transition: 'all 0.15s',
+    }}>
+      {copied ? '✓ Copied' : '📋 Copy'}
+    </button>
+  );
+}
+
+function AutomationTab({ rule }: { rule: AutomationRule }): React.ReactElement {
+  const [jsonExpanded, setJsonExpanded] = React.useState(false);
+
+  // Pretty-print the rule JSON
+  let prettyJson = rule.ruleJson;
+  try {
+    prettyJson = JSON.stringify(JSON.parse(rule.ruleJson), null, 2);
+  } catch { /* leave as-is if already malformed */ }
+
+  return (
+    <div style={{ padding: '20px', overflowY: 'auto', flex: 1 }}>
+      {/* Header banner */}
+      <div style={{
+        display: 'flex', alignItems: 'center', gap: '12px',
+        padding: '14px 18px', marginBottom: '20px',
+        background: 'linear-gradient(135deg, #eff6ff 0%, #f0f9ff 100%)',
+        border: '1px solid #bfdbfe', borderRadius: '10px',
+      }}>
+        <span style={{ fontSize: '28px' }}>🔵</span>
+        <div>
+          <div style={{ fontWeight: 700, fontSize: '15px', color: '#1e40af' }}>
+            Automation-Native Migration
+          </div>
+          <div style={{ fontSize: '12px', color: '#3b82f6', marginTop: '2px' }}>
+            No code required — import directly via Jira Settings → Automation → Import rule
+          </div>
+        </div>
+      </div>
+
+      {/* Rule name */}
+      <div style={{ marginBottom: '20px' }}>
+        <div style={{ fontSize: '12px', fontWeight: 600, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '6px' }}>
+          Rule Name
+        </div>
+        <div style={{
+          fontSize: '16px', fontWeight: 600, color: '#111827',
+          padding: '10px 14px', background: '#f9fafb',
+          border: '1px solid #e5e7eb', borderRadius: '8px',
+        }}>
+          {rule.ruleName}
+        </div>
+      </div>
+
+      {/* Description */}
+      <div style={{ marginBottom: '20px' }}>
+        <div style={{ fontSize: '12px', fontWeight: 600, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '6px' }}>
+          What this rule does
+        </div>
+        <p style={{ fontSize: '14px', color: '#374151', lineHeight: 1.6, margin: 0 }}>
+          {rule.description}
+        </p>
+      </div>
+
+      {/* Rule JSON — importable */}
+      <div style={{ marginBottom: '20px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
+          <div style={{ fontSize: '12px', fontWeight: 600, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+            Automation Rule JSON
+            <span style={{ marginLeft: '8px', fontSize: '11px', fontWeight: 400, color: '#3b82f6', background: '#dbeafe', padding: '2px 6px', borderRadius: '4px' }}>
+              Import-ready
+            </span>
+          </div>
+          <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+            <CopyButton text={prettyJson} />
+            <button
+              onClick={() => { setJsonExpanded(!jsonExpanded); }}
+              style={{
+                fontSize: '12px', padding: '4px 10px',
+                border: '1px solid #d1d5db', borderRadius: '5px',
+                background: '#fff', color: '#374151',
+                cursor: 'pointer',
+              }}
+            >
+              {jsonExpanded ? '▲ Collapse' : '▼ Expand'}
+            </button>
+          </div>
+        </div>
+        <div style={{
+          position: 'relative',
+          background: '#0f172a', borderRadius: '8px',
+          border: '1px solid #1e293b', overflow: 'hidden',
+          maxHeight: jsonExpanded ? 'none' : '280px',
+          transition: 'max-height 0.3s',
+        }}>
+          <pre style={{
+            margin: 0, padding: '16px',
+            fontSize: '12px', lineHeight: 1.6,
+            color: '#e2e8f0', overflowX: 'auto',
+            fontFamily: "'JetBrains Mono', 'Fira Code', monospace",
+          }}>
+            {prettyJson}
+          </pre>
+          {!jsonExpanded && (
+            <div style={{
+              position: 'absolute', bottom: 0, left: 0, right: 0,
+              height: '60px',
+              background: 'linear-gradient(transparent, #0f172a)',
+            }} />
+          )}
+        </div>
+      </div>
+
+      {/* Import instructions */}
+      <div style={{ marginBottom: '20px', padding: '14px 16px', background: '#f0fdf4', border: '1px solid #86efac', borderRadius: '8px' }}>
+        <div style={{ fontSize: '13px', fontWeight: 600, color: '#15803d', marginBottom: '8px' }}>
+          📥 How to import
+        </div>
+        <ol style={{ margin: 0, paddingLeft: '18px', fontSize: '13px', color: '#374151', lineHeight: 1.8 }}>
+          <li>Go to <strong>Jira Settings → Automation</strong></li>
+          <li>Click <strong>Import rules</strong> (top right)</li>
+          <li>Paste the JSON above and click <strong>Import</strong></li>
+          <li>Review and enable the rule</li>
+        </ol>
+      </div>
+
+      {/* Post-import steps */}
+      {rule.postImportSteps.length > 0 && (
+        <div style={{ marginBottom: '20px' }}>
+          <div style={{ fontSize: '12px', fontWeight: 600, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '8px' }}>
+            ⚠️ Required post-import steps
+          </div>
+          <ul style={{ margin: 0, paddingLeft: '18px', fontSize: '13px', color: '#374151', lineHeight: 1.8 }}>
+            {rule.postImportSteps.map((step, i) => (
+              <li key={i}>{step}</li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      {/* Limitations */}
+      {rule.limitations.length > 0 && (
+        <div style={{ padding: '14px 16px', background: '#fffbeb', border: '1px solid #fde68a', borderRadius: '8px' }}>
+          <div style={{ fontSize: '13px', fontWeight: 600, color: '#92400e', marginBottom: '8px' }}>
+            ⚠️ Limitations vs original script
+          </div>
+          <ul style={{ margin: 0, paddingLeft: '18px', fontSize: '13px', color: '#78350f', lineHeight: 1.8 }}>
+            {rule.limitations.map((lim, i) => (
+              <li key={i}>{lim}</li>
+            ))}
+          </ul>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ─── Workspace page ───────────────────────────────────────────────────────────
 
 export function WorkspacePage(): React.ReactElement {
@@ -176,21 +346,36 @@ export function WorkspacePage(): React.ReactElement {
         {/* Tabs */}
         {isCompleted && result !== null && (
           <nav style={{ display: 'flex', gap: '2px' }}>
-            {(['summary', 'forge', 'scriptrunner', 'diagram'] as ActiveTab[]).map(tab => (
+            {(
+              [
+                'summary',
+                // Show Automation tab only when the result has an automationRule
+                ...(result.automationRule !== null ? ['automation'] : []),
+                'forge',
+                'scriptrunner',
+                'diagram',
+              ] as ActiveTab[]
+            ).map(tab => (
               <button
                 key={tab}
                 onClick={() => { setActiveTab(tab); }}
                 style={{
                   ...NAV_TAB_STYLE,
                   background: activeTab === tab ? '#fff' : 'transparent',
-                  color: activeTab === tab ? '#1d4ed8' : '#6b7280',
-                  borderBottom: activeTab === tab ? '2px solid #3b82f6' : '2px solid transparent',
+                  color: activeTab === tab
+                    ? (tab === 'automation' ? '#1d4ed8' : '#1d4ed8')
+                    : '#6b7280',
+                  borderBottom: activeTab === tab
+                    ? `2px solid ${tab === 'automation' ? '#3b82f6' : '#3b82f6'}`
+                    : '2px solid transparent',
+                  fontWeight: tab === 'automation' && activeTab !== 'automation' ? 600 : undefined,
                 }}
               >
                 {{
                   summary: '📋 Summary',
                   forge: '⚡ Forge',
                   scriptrunner: '📜 ScriptRunner',
+                  automation: '🔵 Automation',
                   diagram: '📊 Diagram',
                 }[tab]}
               </button>
@@ -290,6 +475,17 @@ export function WorkspacePage(): React.ReactElement {
                       activeTarget={activeTarget}
                     />
                   </div>
+                </div>
+              )}
+
+              {activeTab === 'automation' && result.automationRule !== null && (
+                <AutomationTab rule={result.automationRule} />
+              )}
+
+              {activeTab === 'automation' && result.automationRule === null && (
+                <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#9ca3af', flexDirection: 'column', gap: '8px' }}>
+                  <span style={{ fontSize: '32px' }}>🔵</span>
+                  <span style={{ fontSize: '14px' }}>No automation rule available for this migration target.</span>
                 </div>
               )}
 
