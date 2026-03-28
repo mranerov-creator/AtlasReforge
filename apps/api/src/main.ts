@@ -20,6 +20,7 @@ import {
   type NestFastifyApplication,
 } from '@nestjs/platform-fastify';
 import { Logger } from '@nestjs/common';
+import multipart from '@fastify/multipart';
 import { AppModule } from './app.module.js';
 
 const PORT = parseInt(process.env['PORT'] ?? '3001', 10);
@@ -35,9 +36,17 @@ async function bootstrap(): Promise<void> {
     AppModule,
     new FastifyAdapter({
       logger: process.env['NODE_ENV'] === 'development',
-      bodyLimit: 1024 * 1024, // 1 MB
+      bodyLimit: 2 * 1024 * 1024, // 2 MB (workflow XML can be larger)
     }),
   );
+
+  // ── Multipart file upload support ─────────────────────────────────────────
+  await app.register(multipart, {
+    limits: {
+      fileSize: 2 * 1024 * 1024, // 2 MB max file size
+      files: 1,                   // Single file per request
+    },
+  });
 
   // ── CORS ─────────────────────────────────────────────────────────────────
   app.enableCors({

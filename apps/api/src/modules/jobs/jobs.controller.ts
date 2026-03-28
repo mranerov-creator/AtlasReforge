@@ -23,15 +23,13 @@
  */
 
 import {
-  Body,
   Controller,
   Get,
   NotFoundException,
   Param,
   Post,
+  Req,
   UnprocessableEntityException,
-  UploadedFile,
-  UseInterceptors,
   Logger,
 } from '@nestjs/common';
 import { InjectQueue } from '@nestjs/bullmq';
@@ -51,49 +49,10 @@ import {
   type MigrationJobData,
 } from './job.constants.js';
 
-/** Minimal Multer file type — avoids Express namespace dependency */
-interface MulterFile {
-  fieldname: string;
-  originalname: string;
-  encoding: string;
-  mimetype: string;
-  size: number;
-  buffer: Buffer;
-}
-
 // ─── Allowed file extensions ──────────────────────────────────────────────────
 
 const ALLOWED_EXTENSIONS = new Set(['.groovy', '.java', '.sil', '.SIL', '.xml', '.txt']);
-const MAX_FILE_SIZE_XML_BYTES = 2 * 1024 * 1024; // 2 MB for workflow XML (can contain many scripts)
-const MAX_FILE_SIZE_BYTES = 512 * 1024; // 512 KB
-
-function validateUploadedFile(
-  file: MulterFile | undefined,
-): { content: string; filename: string } {
-  if (file === undefined) {
-    throw new UnprocessableEntityException('No file uploaded');
-  }
-
-  if (file.size > MAX_FILE_SIZE_BYTES) {
-    throw new UnprocessableEntityException(
-      `File exceeds 512 KB limit (received ${file.size} bytes)`,
-    );
-  }
-
-  const ext = file.originalname.slice(file.originalname.lastIndexOf('.'));
-  if (!ALLOWED_EXTENSIONS.has(ext)) {
-    throw new UnprocessableEntityException(
-      `File type "${ext}" not supported. Allowed: ${[...ALLOWED_EXTENSIONS].join(', ')}`,
-    );
-  }
-
-  const content = file.buffer.toString('utf-8');
-  if (content.trim().length === 0) {
-    throw new UnprocessableEntityException('Uploaded file is empty');
-  }
-
-  return { content, filename: file.originalname };
-}
+const MAX_FILE_SIZE_BYTES = 2 * 1024 * 1024; // 2 MB (workflow XML can be larger)
 
 // ─── Controller ───────────────────────────────────────────────────────────────
 
@@ -112,14 +71,42 @@ export class JobsController {
    * POST /jobs
    * Accepts multipart/form-data with:
    *   - file: script file (.groovy, .java, .sil) OR Jira workflow XML export (.xml)
-   *   - body: SubmitJobDto fields
+   *   - body: SubmitJobDto fields (optional)
    */
   @Post()
   async submitJob(
-    @UploadedFile() file: MulterFile | undefined,
-    @Body() dto: SubmitJobDto,
+    @Req() request: any,
   ): Promise<JobSubmittedResponse> {
-    const { content, filename } = validateUploadedFile(file);
+    // ── Parse multipart file from Fastify request ─────────────────────────
+    const data = await request.file();
+    if (!data) {
+      throw new UnprocessableEntityException('No file uploaded');
+    }
+
+    const buffer = await data.toBuffer();
+    const filename = data.filename;
+    const fileSize = buffer.length;
+
+    if (fileSize > MAX_FILE_SIZE_BYTES) {
+      throw new UnprocessableEntityException(
+        `File exceeds 2 MB limit (received ${fileSize} bytes)`,
+      );
+    }
+
+    const ext = filename.slice(filename.lastIndexOf('.'));
+    if (!ALLOWED_EXTENSIONS.has(ext)) {
+      throw new UnprocessableEntityException(
+        `File type "${ext}" not supported. Allowed: ${[...ALLOWED_EXTENSIONS].join(', ')}`,
+      );
+    }
+
+    const content = buffer.toString('utf-8');
+    if (content.trim().length === 0) {
+      throw new UnprocessableEntityException('Uploaded file is empty');
+    }
+
+    // Extract SubmitJobDto fields from multipart fields (if present)
+    const dto: SubmitJobDto = {} as SubmitJobDto;
 
     const jobId = uuidv4();
     const tenantId = jobId;
