@@ -8,7 +8,7 @@
 
 // ─── Language & Trigger classification ────────────────────────────────────────
 
-export type ScriptLanguage = 'groovy' | 'java' | 'sil' | 'unknown';
+export type ScriptLanguage = 'groovy' | 'java' | 'sil' | 'workflow-xml' | 'unknown';
 
 export type ScriptLanguageConfidence = 'high' | 'medium' | 'low';
 
@@ -153,6 +153,31 @@ export interface ScriptDependency {
   readonly importType: 'require' | 'import' | 'include' | 'unknown';
   readonly rawExpression: string;
   readonly lineNumber: number | null;
+}
+
+/**
+ * Context extracted from a Jira workflow XML export.
+ * Populated when a script is parsed from inside a workflow XML file.
+ * Null for standalone script files.
+ */
+export interface WorkflowContext {
+  /** The workflow name (e.g. "Software Development Workflow") */
+  readonly workflowName: string;
+
+  /** The transition this script is attached to (e.g. "Approve", "Start Progress") */
+  readonly transitionName: string;
+
+  /** Source status of the transition (e.g. "In Review") — null if not determinable */
+  readonly fromStatus: string | null;
+
+  /** Destination status of the transition (e.g. "Approved") — null if not determinable */
+  readonly toStatus: string | null;
+
+  /** Index of this script within the same transition (for ordering multiple post-functions) */
+  readonly scriptIndex: number;
+
+  /** Total scripts extracted from this workflow XML (for progress reporting) */
+  readonly totalScriptsInWorkflow: number;
 }
 
 /**
@@ -390,6 +415,9 @@ export interface ParsedScript {
 
   // ── LLM-generated content (nullable until Stage 4 completes) ──────────────
   readonly businessLogic: BusinessLogicSummary | null;
+
+  // ── Workflow XML context (null for standalone script files) ─────────────
+  readonly workflowContext: WorkflowContext | null;
 
   // ── Meta ──────────────────────────────────────────────────────────────────
   readonly parseStrategy: ParseStrategyMetadata;
