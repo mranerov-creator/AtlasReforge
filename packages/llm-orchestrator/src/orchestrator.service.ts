@@ -117,6 +117,22 @@ export class OrchestratorService {
       stageTimings['s1-classifier'] = Date.now() - s1Start;
     }
 
+    // ── Deterministic SIL safeguard ────────────────────────────────────────
+    // SIL (Power Scripts by cPrime/Appfire) has no Cloud equivalent.
+    // If the LLM ignores the S1 prompt rule and returns scriptrunner-cloud
+    // or forge-or-scriptrunner for a SIL script, override to forge-native here.
+    // This runs AFTER S1 so it always catches LLM drift.
+    if (
+      s1Output.language === 'sil' &&
+      (s1Output.migrationTarget === 'scriptrunner-cloud' ||
+       s1Output.migrationTarget === 'forge-or-scriptrunner')
+    ) {
+      s1Output = {
+        ...s1Output,
+        migrationTarget: 'forge-native',
+      } as typeof s1Output;
+    }
+
     // ── Stage 2: Extract ───────────────────────────────────────────────────
     const s2Start = Date.now();
     let s2Output: S2ExtractionOutput;

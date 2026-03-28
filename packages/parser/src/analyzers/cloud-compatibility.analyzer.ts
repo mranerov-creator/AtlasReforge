@@ -336,6 +336,137 @@ const RULES: ReadonlyArray<CompatibilityRule> = [
       };
     },
   },
+  // ── SIL-SPECIFIC rules (CR-031–040) ────────────────────────────────────
+  // These rules only fire for SIL scripts (Power Scripts / cPrime/Appfire).
+  // SIL has NO Cloud equivalent from Appfire — the valid targets are
+  // forge-native or automation-native only.
+
+  {
+    code: 'CR-031',
+    evaluate: (_deps, ctx) => {
+      if (ctx.language !== 'sil') return null;
+      // Always emit an info issue clarifying the migration path for SIL
+      return {
+        level: 'yellow',
+        category: 'deprecated-api',
+        title: 'Power Scripts (SIL) — no Cloud equivalent from Appfire',
+        description:
+          'Appfire discontinued Power Scripts for Cloud. SIL scripts must be rewritten ' +
+          'as Atlassian Forge apps (TypeScript) or as native Automation rules. ' +
+          'Migration to ScriptRunner Cloud is NOT valid (different vendor, different language).',
+        affectedExpression: 'SIL script',
+        lineNumber: null,
+        cloudAlternative:
+          'Rewrite as Forge (jira:workflowPostFunction / validator / scheduledTrigger) ' +
+          'or as a native Automation rule if logic is simple enough.',
+        requiresFieldMappingRegistry: false,
+      };
+    },
+  },
+
+  {
+    code: 'CR-032',
+    evaluate: (deps, ctx) => {
+      if (ctx.language !== 'sil') return null;
+      // runAs() in SIL impersonates a user — no direct equivalent in Forge
+      const hasRunAs = deps.users.some((u) =>
+        u.rawExpression.toLowerCase().includes('runas'),
+      );
+      if (!hasRunAs) return null;
+      return {
+        level: 'yellow',
+        category: 'gdpr-user-reference',
+        title: 'SIL runAs() — user impersonation not available in Forge',
+        description:
+          'SIL runAs("username", {...}) impersonates a user. Forge has no impersonation API. ' +
+          'Actions run as the app installation service account or the invoking user (context.accountId).',
+        affectedExpression: 'runAs()',
+        lineNumber: null,
+        cloudAlternative:
+          'Use context.accountId for the invoking user. For service-account behaviour, ' +
+          'use a dedicated Forge app installation with appropriate OAuth scopes.',
+        requiresFieldMappingRegistry: false,
+      };
+    },
+  },
+
+  {
+    code: 'CR-033',
+    evaluate: (deps, ctx) => {
+      if (ctx.language !== 'sil') return null;
+      // include / require of other SIL files — not portable to Forge
+      if (deps.scriptDependencies.length === 0) return null;
+      return {
+        level: 'yellow',
+        category: 'deprecated-api',
+        title: `${deps.scriptDependencies.length} SIL include/require — must be inlined for Forge`,
+        description:
+          'SIL supports include/require of external .sil files. Forge has no equivalent ' +
+          'runtime file inclusion. All dependencies must be bundled into the Forge app package.',
+        affectedExpression: deps.scriptDependencies.map((d) => d.importedPath).join(', '),
+        lineNumber: deps.scriptDependencies[0]?.lineNumber ?? null,
+        cloudAlternative:
+          'Refactor: inline the shared SIL logic into TypeScript utility modules, ' +
+          'or split into multiple Forge modules that share a common npm package.',
+        requiresFieldMappingRegistry: false,
+      };
+    },
+  },
+
+  {
+    code: 'CR-034',
+    evaluate: (deps, ctx) => {
+      if (ctx.language !== 'sil') return null;
+      // SIL httpGet/httpPost calls need Forge Egress declaration in manifest.yml
+      if (deps.externalHttpCalls.length === 0) return null;
+      return {
+        level: 'yellow',
+        category: 'connect-to-forge',
+        title: `${deps.externalHttpCalls.length} SIL HTTP call(s) — require Forge Egress declaration`,
+        description:
+          'SIL httpGet()/httpPost() calls become fetch() from @forge/api in Forge. ' +
+          'Each external domain must be explicitly declared in manifest.yml under egress.addresses.',
+        affectedExpression: deps.externalHttpCalls
+          .map((c) => c.url ?? 'dynamic URL')
+          .slice(0, 3)
+          .join(', '),
+        lineNumber: deps.externalHttpCalls[0]?.lineNumber ?? null,
+        cloudAlternative:
+          'Use fetch() from @forge/api. Add each domain to manifest.yml: ' +
+          'permissions.external.fetch.client: [{url: "https://yourdomain.com/*"}]',
+        requiresFieldMappingRegistry: false,
+      };
+    },
+  },
+
+  {
+    code: 'CR-035',
+    evaluate: (deps, ctx) => {
+      if (ctx.language !== 'sil') return null;
+      // SIL getIssues() / searchIssues() → paginated JQL in Forge
+      const hasJqlSearch = deps.internalApiCalls.some((c) =>
+        c.endpoint.includes('search') || c.endpoint.includes('picker'),
+      );
+      // Also catch via raw expression patterns if not in internalApiCalls
+      if (!hasJqlSearch && deps.internalApiCalls.length === 0) return null;
+      if (!hasJqlSearch) return null;
+      return {
+        level: 'yellow',
+        category: 'sync-to-async-paradigm',
+        title: 'SIL getIssues() — must use paginated JQL search in Forge',
+        description:
+          'SIL getIssues("JQL") returns all results synchronously. ' +
+          'In Forge, use GET /rest/api/3/search with maxResults ≤ 100 and cursor-based pagination ' +
+          'to avoid Forge timeout (25s limit).',
+        affectedExpression: 'getIssues() / searchIssues()',
+        lineNumber: null,
+        cloudAlternative:
+          'requestJira("/rest/api/3/search?jql=...&maxResults=100&startAt=0") ' +
+          'with pagination loop. Check total > maxResults + startAt to continue.',
+        requiresFieldMappingRegistry: false,
+      };
+    },
+  },
 ];
 
 // ─── Automation Suitability Analysis ─────────────────────────────────────────

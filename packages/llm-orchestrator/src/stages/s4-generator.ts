@@ -21,6 +21,7 @@ import type { ParsedScriptShell } from '@atlasreforge/parser';
 import {
   S4_FORGE_GENERATOR_SYSTEM_PROMPT,
   S4_SR_CLOUD_GENERATOR_SYSTEM_PROMPT,
+  S4_SIL_TO_FORGE_SYSTEM_PROMPT,
 } from '../meta-prompts/prompts.js';
 import { parseJsonResponse, withRetry } from '../providers/llm.providers.js';
 import type {
@@ -184,10 +185,18 @@ export async function runS4Generator(
   generatorProvider: LlmProvider,
   maxRetries: number,
 ): Promise<S4GeneratorOutput> {
-  const isForge = classifierOutput.migrationTarget !== 'scriptrunner-cloud';
-  const systemPrompt = isForge
-    ? S4_FORGE_GENERATOR_SYSTEM_PROMPT
-    : S4_SR_CLOUD_GENERATOR_SYSTEM_PROMPT;
+  // Triary prompt selector:
+  //   SIL scripts  → dedicated SIL→Forge prompt (SIL has no Cloud equivalent from Appfire)
+  //   scriptrunner-cloud → ScriptRunner Cloud Groovy prompt
+  //   everything else    → standard Forge prompt
+  const isSilScript = classifierOutput.language === 'sil';
+  const isScriptRunner = classifierOutput.migrationTarget === 'scriptrunner-cloud';
+
+  const systemPrompt = isSilScript
+    ? S4_SIL_TO_FORGE_SYSTEM_PROMPT
+    : isScriptRunner
+      ? S4_SR_CLOUD_GENERATOR_SYSTEM_PROMPT
+      : S4_FORGE_GENERATOR_SYSTEM_PROMPT;
 
   const userMessage = buildGeneratorUserMessage(
     parsedScript,
