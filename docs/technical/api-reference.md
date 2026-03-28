@@ -5,6 +5,59 @@
 
 ---
 
+
+---
+
+## Automation
+
+### POST /api/v1/automation/import
+
+Server-side proxy that imports an Atlassian Cloud Automation rule JSON to a Jira Cloud instance.
+Credentials are used only for this single request and never stored or logged.
+
+**Request:** `application/json`
+
+```json
+{
+  "ruleJson": "{...}",
+  "jiraBaseUrl": "https://yourcompany.atlassian.net",
+  "email": "you@company.com",
+  "apiToken": "ATATT3x..."
+}
+```
+
+| Field | Description |
+|-------|-------------|
+| ruleJson | Atlassian Automation rule export JSON (schema v1) |
+| jiraBaseUrl | Must match `*.atlassian.net` HTTPS pattern |
+| email | Atlassian account email |
+| apiToken | Atlassian API token (generate at id.atlassian.com) |
+
+**Response:** `200 OK`
+
+```json
+{
+  "success": true,
+  "ruleId": "12345",
+  "ruleName": "Auto-assign on issue creation",
+  "ruleUrl": "https://yourcompany.atlassian.net/jira/settings/automation#/rule/12345",
+  "message": "Rule imported successfully. Click the link to review and enable it."
+}
+```
+
+**Errors:**
+
+| Code | Reason |
+|------|--------|
+| 400 | Invalid JSON, missing fields, invalid jiraBaseUrl format |
+| 401 | Authentication failed — check email and API token |
+| 403 | Insufficient permissions — need "Manage automation rules" in Jira |
+| 422 | Atlassian returned error — check rule JSON structure |
+| 502 | Could not reach Atlassian Cloud — check URL |
+
+> **Security:** API token is sent directly to your Jira instance via server-side Basic Auth. It never passes through AtlasReforge's database or logs.
+
+---
 ## Jobs
 
 ### POST /api/v1/jobs
@@ -15,7 +68,7 @@ Submit a script for migration analysis and code generation.
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
-| file | File | Yes | `.groovy`, `.java`, `.sil`, `.SIL`, or `.txt` — max 512 KB |
+| file | File | Yes | `.groovy`, `.java`, `.sil`, `.SIL`, `.xml` (Jira workflow export), or `.txt` — max 512 KB for scripts, 2 MB for `.xml` |
 
 **Response:** `202 Accepted`
 
@@ -26,6 +79,8 @@ Submit a script for migration analysis and code generation.
   "registryUrl": "/api/v1/registry/{jobId}"
 }
 ```
+
+> **Workflow XML:** If the uploaded file is a Jira workflow XML export, the API automatically extracts N embedded scripts and enqueues N independent migration jobs. The response `jobId` refers to the first extracted script. Poll each extracted job individually.
 
 **Errors:**
 

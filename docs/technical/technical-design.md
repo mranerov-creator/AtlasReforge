@@ -30,7 +30,9 @@ Three categories of incompatibility:
 | Intelligent parsing | Multi-signal language detection (Groovy/Java/SIL), Strategy Pattern dispatch, deterministic dependency extraction, pure-function Cloud readiness scoring |
 | RAG-grounded generation | Weekly-updated vector index of 28 Atlassian doc pages prevents LLM hallucination |
 | Field Mapping Registry | UI-driven resolution of environment-specific IDs with `ATLAS_*()` placeholders |
-| Auto-validation | Stage 5 checks 12 rules (VAL_001–VAL_061) and auto-fixes common issues |
+| Auto-validation | Stage 5 checks 40+ rules (VAL_001–VAL_061) and auto-fixes common issues. Skipped for automation-native. |
+| Automation-native target | Scripts with simple logic → native Jira Cloud Automation rules (no code, no license, no deploy). Importable JSON via one-click proxy. |
+| Workflow XML import | Jira workflow XML exports → N independent migration jobs, each preserving transition context (workflowName, transitionName, fromStatus→toStatus). |
 
 ---
 
@@ -72,6 +74,10 @@ The parser is the foundational package. Its output — `ParsedScript` — is the
 - Atlassian API patterns (weight: 10) — ScriptRunner, ComponentAccessor
 - Negative signals — patterns that exclude a language
 
+**Module Types (29 total):** Standard Atlassian types (post-function, validator, condition, listener, scheduled-job, rest-endpoint, web-panel, etc.) plus:
+- **SIL-specific:** `live-field` 🔴, `scripted-field` 🟡, `mail-handler` 🟡, `sil-rest-endpoint`, `jql-alias`
+- **SR-specific:** `behaviour` 🔴, `script-fragment` 🔴, `escalation-service` 🟡
+
 **Strategy Pattern:** Three parse strategies dispatched by detected language:
 
 | Strategy | Languages | Mechanism |
@@ -86,8 +92,19 @@ The parser is the foundational package. Its output — `ParsedScript` — is the
 - User references — GDPR critical (`getUserByName()`, `runAs()`)
 - External HTTP calls, REST endpoint references, deprecated APIs
 
-**Cloud Compatibility Analysis** — 20 rules (CR-001 to CR-020):
+**Workflow XML Parser** (`parsers/workflow-xml.parser.ts`):
+- Accepts Jira workflow XML exports (`.xml`, up to 2 MB)
+- Extracts N embedded scripts → N independent `ParsedScript` objects
+- Preserves `WorkflowContext` per script (workflowName, transitionName, fromStatus, toStatus)
+- Supports 12 function types: ScriptRunner Groovy (6) + Power Scripts SIL (6, both cPrime and Appfire package names)
+- Warns on external file references, unknown plugin types
+
+**Cloud Compatibility Analysis** — 45 rules (CR-001 to CR-045):
 - RED = blockers (-25 pts), YELLOW = paradigm shifts (-10 pts), GREEN = confirmations
+- CR-001–030: Core Cloud rules (filesystem, SQL, DOM, GDPR, versioning)
+- CR-031–035: SIL/Power Scripts specific (Live Fields, ldap, file I/O, runAs)
+- CR-036–040: SIL module types (live-field, scripted-field, mail-handler, ldap, file I/O)
+- CR-041–045: ScriptRunner Groovy specific (Behaviour, Fragment, MutableIssue, bulk ops, scripted fields)
 - Pure function, no LLM, synchronously executable, exhaustively unit testable
 
 ### 3.2 @atlasreforge/llm-orchestrator
@@ -99,7 +116,10 @@ The parser is the foundational package. Its output — `ParsedScript` — is the
 | S1 Classify | GPT-4o-mini | ParsedScriptShell | moduleType, complexity, migrationTarget, costEstimate |
 | S2 Extract | GPT-4o-mini | ParsedScript + S1 | enrichedFields, businessLogic, detectedPatterns |
 | S3 Retrieve | pgvector | S1 + S2 outputs | Top-10 ranked doc chunks (≤8 parallel queries) |
-| S4 Generate | Claude Sonnet 4 | All prior + raw script | forgeFiles/srCode, diagram, confidence, placeholders |
+| S4 Generate | Claude Sonnet 4.6 | All prior + raw script | forgeFiles/srCode, diagram, confidence, placeholders |
+| S4b Automation | Claude Sonnet 4.6 | S1+S2 + AutomationSuitability | automationRule JSON (importable), diagram, confidence |
+
+> **S4 fork logic:** `migrationTarget === 'automation-native'` → S4b (Automation rule JSON, S5 skipped). `language === 'sil'` → dedicated SIL→Forge prompt with 25 primitive mappings. `target === 'scriptrunner-cloud'` → SR Cloud Groovy prompt. All others → Forge prompt with 6 SR extension point types.
 | S5 Validate | Deterministic | S4 output | issues, autoFixCount, patched files |
 
 **Meta-Prompt Security:**
@@ -190,7 +210,7 @@ Only persistent store is PostgreSQL + pgvector. Minimal by design.
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| POST | /api/v1/jobs | Submit script (multipart ≤512KB) |
+| POST | /api/v1/jobs | Submit script (multipart ≤512KB) or workflow XML (≤2MB) |
 | GET | /api/v1/jobs/:jobId/status | Poll progress (0-100%) |
 | GET | /api/v1/jobs/:jobId/result | Get completed result |
 | GET | /api/v1/registry/:jobId | Get registry session |
@@ -198,6 +218,7 @@ Only persistent store is PostgreSQL + pgvector. Minimal by design.
 | PUT | /api/v1/registry/:jobId/groups | Map group |
 | PUT | /api/v1/registry/:jobId/users | Map user → accountId |
 | POST | /api/v1/registry/:jobId/resolve | Resolve placeholders |
+| POST | /api/v1/automation/import | Proxy: import Automation rule to Jira Cloud (server-side Basic Auth) |
 | GET | /health | Liveness probe |
 
 ---
@@ -239,10 +260,12 @@ Only persistent store is PostgreSQL + pgvector. Minimal by design.
 
 | Layer | Count | Scope |
 |-------|-------|-------|
-| Unit Tests | 159 | Pure functions, all LLM mocked, no DB/Redis/HTTP |
+| Unit Tests | ~230 | Pure functions, all LLM mocked, no DB/Redis/HTTP |
 | Integration (mock DB) | 2 | RAG write→retrieve with MockPgPool |
 | Integration (real DB) | 2 | pgvector cosine similarity, schema init |
 | Smoke Test | 4 assertions | Parser → Registry → Placeholder resolution |
+
+> Test suites added since v1.1: 12 automation-native tests (orchestrator.test.ts), 10 SIL Power Scripts tests (parser.test.ts), 20 Workflow XML parser tests (workflow-xml.test.ts).
 
 ### 7.2 Key Decisions
 
@@ -346,7 +369,7 @@ Or set `RAG_SEED_ON_STARTUP=true` for auto-seed.
 
 | Term | Definition |
 |------|------------|
-| SIL | Simple Issue Language — proprietary Adaptavist scripting, no public grammar |
+| SIL | Simple Issue Language — proprietary scripting language of **Power Scripts for Jira** by cPrime/Appfire (formerly JJUPIN). NOT related to Adaptavist or ScriptRunner. No public grammar. |
 | RAG | Retrieval-Augmented Generation — doc chunks injected as LLM context |
 | pgvector | PostgreSQL extension for vector storage and similarity search |
 | BullMQ | Redis-backed job queue with priorities, retries, repeatable jobs |
