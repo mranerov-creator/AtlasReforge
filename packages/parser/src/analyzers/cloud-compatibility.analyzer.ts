@@ -467,6 +467,152 @@ const RULES: ReadonlyArray<CompatibilityRule> = [
       };
     },
   },
+
+  // ── SIL CR-036–040: New module types from document ────────────────────
+
+  {
+    code: 'CR-036',
+    evaluate: (deps, ctx) => {
+      if (ctx.language !== 'sil') return null;
+      if (ctx.moduleType !== 'live-field') return null;
+      // Live Fields are the hardest SIL blocker — DOM manipulation is forbidden in Cloud
+      const lfApis = deps.deprecatedApis.filter(
+        (a) => a.deprecationReason === 'dom-manipulation' && a.apiClass.startsWith('SIL Live'),
+      );
+      return {
+        level: 'red',
+        category: 'live-field-dom',
+        title: '🔴 SIL Live Field — DOM manipulation forbidden in Atlassian Cloud',
+        description:
+          'Power Scripts Live Fields (lfHide, lfDisable, lfWatch, lfRestrictSelect...) ' +
+          'inject JavaScript that manipulates the Jira UI DOM in real time. ' +
+          'Atlassian Cloud strictly forbids DOM access. ' +
+          'This is the hardest migration blocker in Power Scripts.',
+        affectedExpression: lfApis.map((a) => a.methodCall).slice(0, 3).join(', ') || 'lf*() functions',
+        lineNumber: lfApis[0]?.lineNumber ?? null,
+        cloudAlternative:
+          'Two options: (1) Forge Custom UI — rebuild the screen as a React component ' +
+          'deployed via Forge manifest.yml custom-ui module. ' +
+          '(2) Jira UI Modifications API — lighter-weight, supports hide/show/require ' +
+          'on standard fields without full React. Use POST /rest/api/3/uiModifications.',
+        requiresFieldMappingRegistry: false,
+      };
+    },
+  },
+
+  {
+    code: 'CR-037',
+    evaluate: (_deps, ctx) => {
+      if (ctx.language !== 'sil') return null;
+      if (ctx.moduleType !== 'scripted-field') return null;
+      return {
+        level: 'yellow',
+        category: 'scripted-field-perf',
+        title: '🟡 SIL Scripted Field — on-read compute degrades Cloud performance',
+        description:
+          'Power Scripts Scripted Fields execute a SIL script every time a user opens ' +
+          'the issue or runs a filter — pure compute, no stored value. ' +
+          'In Cloud, this pattern degrades REST API performance severely at scale. ' +
+          'Atlassian does not support runtime-computed custom fields via Forge.',
+        affectedExpression: 'Scripted Field module',
+        lineNumber: null,
+        cloudAlternative:
+          'Rewrite as an event-driven field update: ' +
+          '(1) Create a regular custom field to store the calculated value. ' +
+          '(2) Create a Forge listener (jira:issueUpdated webhook) that recalculates ' +
+          'and writes the value whenever its dependencies change. ' +
+          'This is the recommended Cloud pattern for calculated fields.',
+        requiresFieldMappingRegistry: true,
+      };
+    },
+  },
+
+  {
+    code: 'CR-038',
+    evaluate: (_deps, ctx) => {
+      if (ctx.language !== 'sil') return null;
+      if (ctx.moduleType !== 'mail-handler') return null;
+      return {
+        level: 'yellow',
+        category: 'mail-handler-rewrite',
+        title: '🟡 SIL Mail Handler — rewrite as webhook + Forge function',
+        description:
+          'Power Scripts Incoming Mail Handlers process inbound email to create or update ' +
+          'Jira issues. Cloud has no equivalent plugin extension point for mail processing.',
+        affectedExpression: 'Incoming Mail Handler module',
+        lineNumber: null,
+        cloudAlternative:
+          'Recommended Cloud architecture: ' +
+          '(1) Route inbound email to a relay service (e.g. SendGrid Inbound Parse, ' +
+          'AWS SES + Lambda, or Azure Logic Apps). ' +
+          '(2) The relay POSTs a webhook to a Forge webtrigger URL. ' +
+          '(3) The Forge webtrigger parses the payload and calls requestJira() ' +
+          'to create/update the issue via REST API v3.',
+        requiresFieldMappingRegistry: false,
+      };
+    },
+  },
+
+  {
+    code: 'CR-039',
+    evaluate: (deps, ctx) => {
+      if (ctx.language !== 'sil') return null;
+      // ldap() is a hard red blocker — no Forge equivalent
+      const hasLdap = deps.deprecatedApis.some(
+        (a) => a.deprecationReason === 'ldap-access',
+      );
+      if (!hasLdap) return null;
+      const ldapApis = deps.deprecatedApis.filter((a) => a.deprecationReason === 'ldap-access');
+      return {
+        level: 'red',
+        category: 'ldap-access',
+        title: '🔴 SIL ldap() — no Forge equivalent, requires external IdP API',
+        description:
+          'SIL ldap() and ldapSearch() query your on-premise Active Directory/LDAP directly. ' +
+          'Forge has zero LDAP access — Cloud runs in a sandboxed environment with no ' +
+          'network access to on-premise infrastructure.',
+        affectedExpression: ldapApis.map((a) => a.methodCall).join(', '),
+        lineNumber: ldapApis[0]?.lineNumber ?? null,
+        cloudAlternative:
+          'Architectural options: ' +
+          '(1) Expose LDAP/AD data via a middleware REST API (e.g. Azure AD Graph API, ' +
+          'Okta API, or a custom REST facade over your on-premise LDAP). ' +
+          '(2) Call that API from Forge using fetch() from @forge/api with Egress declaration. ' +
+          '(3) Cache results in Forge Storage API to reduce latency.',
+        requiresFieldMappingRegistry: false,
+      };
+    },
+  },
+
+  {
+    code: 'CR-040',
+    evaluate: (deps, ctx) => {
+      if (ctx.language !== 'sil') return null;
+      // SIL file I/O — readFromTextFile / writeToTextFile
+      const hasFileIo = deps.deprecatedApis.some(
+        (a) => a.deprecationReason === 'local-file-read',
+      );
+      if (!hasFileIo) return null;
+      const fileApis = deps.deprecatedApis.filter((a) => a.deprecationReason === 'local-file-read');
+      return {
+        level: 'red',
+        category: 'local-file-access',
+        title: '🔴 SIL file I/O — no filesystem in Forge Cloud',
+        description:
+          'SIL readFromTextFile() and writeToTextFile() access the server\'s local filesystem. ' +
+          'Forge runs in a sandboxed AWS Lambda environment with no persistent filesystem.',
+        affectedExpression: fileApis.map((a) => a.methodCall).slice(0, 3).join(', '),
+        lineNumber: fileApis[0]?.lineNumber ?? null,
+        cloudAlternative:
+          'Storage options depending on use case: ' +
+          '(1) Forge Storage API — for small key-value data (<500KB per key). ' +
+          '(2) Atlassian Media API — for binary files and attachments. ' +
+          '(3) Confluence page attachments — for shared documents. ' +
+          '(4) External object storage (S3, Azure Blob) called via Forge Egress fetch().',
+        requiresFieldMappingRegistry: false,
+      };
+    },
+  },
 ];
 
 // ─── Automation Suitability Analysis ─────────────────────────────────────────
@@ -694,6 +840,22 @@ function resolveMigrationTarget(
   const hasFilesystem = issues.some(
     (i) => i.category === 'filesystem-access',
   );
+
+  // ── SIL-specific target rules ───────────────────────────────────────────
+  // Live Fields (DOM) and LDAP are hard manual-rewrite blockers
+  const hasLiveField = issues.some((i) => i.category === 'live-field-dom');
+  const hasLdap      = issues.some((i) => i.category === 'ldap-access');
+  const hasLocalFile = issues.some((i) => i.category === 'local-file-access');
+  const isMailHandler = ctx.moduleType === 'mail-handler';
+  const isSilRestEndpoint = ctx.moduleType === 'sil-rest-endpoint';
+  const isJqlAlias = ctx.moduleType === 'jql-alias';
+
+  if (hasLiveField) return 'manual-rewrite'; // DOM manipulation — no Cloud path
+  if (hasLdap)      return 'manual-rewrite'; // LDAP — requires external middleware first
+  if (hasLocalFile) return 'manual-rewrite'; // File I/O — no filesystem in Forge
+
+  // Mail handlers, REST endpoints and JQL aliases → forge-native (webtrigger / JQL module)
+  if (isMailHandler || isSilRestEndpoint || isJqlAlias) return 'forge-native';
 
   if (hasConnectDescriptor) return 'forge-remote';
   if (hasWebPanel) return 'forge-native';
