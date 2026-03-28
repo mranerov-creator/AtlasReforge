@@ -16,11 +16,12 @@
  * It is stateless — all state lives in the job payload and the returned result.
  */
 
-import type { ParsedScriptShell } from '@atlasreforge/parser';
+import type { CustomFieldRef, GroupRef, ParsedScriptShell, UserRef } from '@atlasreforge/parser';
 import { runS1Classifier } from './stages/s1-classifier.js';
 import { runS2Extractor } from './stages/s2-extractor.js';
 import { NoopRagRetriever, runS3Retrieval } from './stages/s3-retrieval.js';
 import { runS4Generator } from './stages/s4-generator.js';
+import { runS4bAutomationGenerator } from './stages/s4b-automation-generator.js';
 import { runS5Validator } from './stages/s5-validator.js';
 import type {
   DEFAULT_ORCHESTRATOR_CONFIG,
@@ -33,6 +34,7 @@ import type {
   S2ExtractionOutput,
   S3RetrievalOutput,
   S4GeneratorOutput,
+  S4bGeneratorOutput,
   S5ValidationOutput,
 } from './types/pipeline.types.js';
 
@@ -154,39 +156,101 @@ export class OrchestratorService {
       stageTimings['s3-retrieval'] = Date.now() - s3Start;
     }
 
-    // ── Stage 4: Generate ──────────────────────────────────────────────────
+    // ── Stage 4 / 4b: Generate (conditional dispatch) ─────────────────────
+    //
+    // 'automation-native' scripts bypass Forge/SR generation entirely
+    // and go directly to the Automation rule generator (Stage 4b).
+    // All other targets use the standard Stage 4 generator.
     const s4Start = Date.now();
-    let s4Output: S4GeneratorOutput;
+    let s4Output: S4GeneratorOutput | null = null;
+    let s4bOutput: S4bGeneratorOutput | null = null;
+    const isAutomationNative = s1Output.migrationTarget === 'automation-native';
+
     try {
-      s4Output = await withTimeout(
-        runS4Generator(
-          input.parsedScript,
-          input.rawScriptContent,
-          s1Output,
-          s2Output,
-          s3Output,
-          deps.generatorProvider,
-          this.config.maxRetries,
-        ),
-        this.config.stageTimeoutMs,
-        'S4-Generator',
-      );
-      totalTokens += s4Output.tokensUsed;
-      modelsUsed.push(s4Output.modelUsed);
+      if (isAutomationNative) {
+        // ── 4b: Automation rule generator ─────────────────────────────────
+        const automationSuitability = input.parsedScript.cloudReadiness.automationSuitability;
+
+        if (automationSuitability === null) {
+          // Suitability was not computed (rawScriptContent was not passed to parser).
+          // Fall back to standard S4 to avoid a silent failure.
+          s4Output = await withTimeout(
+            runS4Generator(
+              input.parsedScript,
+              input.rawScriptContent,
+              s1Output,
+              s2Output,
+              s3Output,
+              deps.generatorProvider,
+              this.config.maxRetries,
+            ),
+            this.config.stageTimeoutMs,
+            'S4-Generator-Fallback',
+          );
+        } else {
+          s4bOutput = await withTimeout(
+            runS4bAutomationGenerator(
+              input.parsedScript,
+              input.rawScriptContent,
+              s1Output,
+              s2Output,
+              automationSuitability,
+              deps.generatorProvider,
+              this.config.maxRetries,
+            ),
+            this.config.stageTimeoutMs,
+            'S4b-AutomationGenerator',
+          );
+          totalTokens += s4bOutput.tokensUsed;
+          modelsUsed.push(s4bOutput.modelUsed);
+        }
+      } else {
+        // ── 4: Standard Forge / ScriptRunner generator ─────────────────────
+        s4Output = await withTimeout(
+          runS4Generator(
+            input.parsedScript,
+            input.rawScriptContent,
+            s1Output,
+            s2Output,
+            s3Output,
+            deps.generatorProvider,
+            this.config.maxRetries,
+          ),
+          this.config.stageTimeoutMs,
+          'S4-Generator',
+        );
+        totalTokens += s4Output.tokensUsed;
+        modelsUsed.push(s4Output.modelUsed);
+      }
     } catch (err) {
-      throw new PipelineError('S4', err instanceof Error ? err.message : String(err));
+      throw new PipelineError(
+        isAutomationNative ? 'S4b' : 'S4',
+        err instanceof Error ? err.message : String(err),
+      );
     } finally {
-      stageTimings['s4-generator'] = Date.now() - s4Start;
+      stageTimings[isAutomationNative ? 's4b-automation-generator' : 's4-generator'] = Date.now() - s4Start;
     }
 
     // ── Stage 5: Validate ──────────────────────────────────────────────────
+    // S5 validates generated TypeScript/Groovy code for Cloud anti-patterns.
+    // Automation rule JSON has no executable code — skip validation for 4b output.
     const s5Start = Date.now();
     let s5Output: S5ValidationOutput;
     try {
-      s5Output = runS5Validator({      // S5 is synchronous — no LLM, no I/O
-        generatorOutput: s4Output,
-        parsedScript: input.parsedScript,
-      });
+      if (s4Output !== null) {
+        s5Output = runS5Validator({    // S5 is synchronous — no LLM, no I/O
+          generatorOutput: s4Output,
+          parsedScript: input.parsedScript,
+        });
+      } else {
+        // automation-native: S5 not applicable — return pass with zero issues
+        s5Output = {
+          passed: true,
+          issues: [],
+          autoFixCount: 0,
+          generatorOutput: buildEmptyS4ForAutomation(),
+        };
+      }
     } catch {
       // S5 failure: return unvalidated output with a warning
       s5Output = {
@@ -200,7 +264,7 @@ export class OrchestratorService {
           autoFixed: false,
         }],
         autoFixCount: 0,
-        generatorOutput: s4Output,
+        generatorOutput: s4Output ?? buildEmptyS4ForAutomation(),
       };
     } finally {
       stageTimings['s5-validator'] = Date.now() - s5Start;
@@ -214,7 +278,7 @@ export class OrchestratorService {
       deps.classifierProvider.modelId,
       deps.generatorProvider.modelId,
       s1Output.tokensUsed + s2Output.tokensUsed,
-      s4Output.tokensUsed,
+      s4Output?.tokensUsed ?? 0,
     );
 
     const telemetry: PipelineTelemetry = {
@@ -225,20 +289,26 @@ export class OrchestratorService {
       modelsUsed: [...new Set(modelsUsed)],
     };
 
+    // Assemble from whichever stage ran (S4 vs S4b)
     const finalOutput = s5Output.generatorOutput;
+
+    // For automation-native: use S4b outputs; otherwise use S4/S5 outputs
+    const diagram        = s4bOutput?.diagram        ?? finalOutput.diagram;
+    const fieldPlaceholders = s4bOutput?.fieldMappingPlaceholders ?? finalOutput.fieldMappingPlaceholders;
 
     return {
       jobId: input.jobId,
       completedAt: new Date().toISOString(),
-      forgeFiles: finalOutput.forgeFiles,
-      scriptRunnerCode: finalOutput.scriptRunnerCode,
-      diagram: finalOutput.diagram,
+      forgeFiles: isAutomationNative ? null : finalOutput.forgeFiles,
+      scriptRunnerCode: isAutomationNative ? null : finalOutput.scriptRunnerCode,
+      automationRule: s4bOutput?.automationRule ?? null,
+      diagram,
       businessLogic: s2Output.businessLogicSummary,
-      oauthScopes: finalOutput.oauthScopes,
+      oauthScopes: isAutomationNative ? [] : finalOutput.oauthScopes,
       confidence: finalOutput.confidence,
       cloudReadinessScore: input.parsedScript.cloudReadiness.score,
       validationIssues: s5Output.issues,
-      fieldMappingPlaceholders: finalOutput.fieldMappingPlaceholders,
+      fieldMappingPlaceholders: fieldPlaceholders,
       pipeline: telemetry,
     };
   }
@@ -268,19 +338,19 @@ function estimateCost(
 
 function buildEmptyS2(script: ParsedScriptShell): S2ExtractionOutput {
   return {
-    enrichedCustomFields: script.dependencies.customFields.map((cf) => ({
+    enrichedCustomFields: script.dependencies.customFields.map((cf: CustomFieldRef) => ({
       fieldId: cf.fieldId,
       probableBusinessPurpose: 'Unknown — S2 extraction failed',
       usageType: cf.usageType,
       suggestedForgeStorageKey: cf.fieldId.replace('customfield_', 'field_'),
       requiresFieldMappingRegistry: true,
     })),
-    enrichedGroups: script.dependencies.groups.map((g) => ({
+    enrichedGroups: script.dependencies.groups.map((g: GroupRef) => ({
       groupName: g.groupName,
       probableRole: 'Unknown — S2 extraction failed',
       cloudEquivalentPattern: 'GET /rest/api/3/group/member?groupId={groupId}',
     })),
-    enrichedUserRefs: script.dependencies.users.map((u) => ({
+    enrichedUserRefs: script.dependencies.users.map((u: UserRef) => ({
       identifier: u.identifier,
       identifierType: u.identifierType,
       gdprRisk: 'high' as const,
@@ -295,6 +365,35 @@ function buildEmptyS2(script: ParsedScriptShell): S2ExtractionOutput {
     },
     detectedPatterns: [],
     tokensUsed: 0,
+  };
+}
+
+// ─── Empty S4 shell for automation-native bypass ─────────────────────────────
+
+/**
+ * When migrationTarget === 'automation-native', S4 is bypassed entirely.
+ * S5 expects an S4GeneratorOutput — this provides a safe empty shell.
+ */
+function buildEmptyS4ForAutomation(): S4GeneratorOutput {
+  return {
+    forgeFiles: null,
+    scriptRunnerCode: null,
+    diagram: {
+      type: 'flowchart',
+      mermaidSource: 'flowchart TD\n  A([Automation Rule]) --> B([See automation tab])',
+      title: 'Automation Rule — see Automation tab',
+    },
+    oauthScopes: [],
+    confidence: {
+      fieldMapping:     { score: 1, note: 'N/A — automation-native target', requiresHumanReview: false },
+      webhookLogic:     { score: 1, note: 'N/A — automation-native target', requiresHumanReview: false },
+      userResolution:   { score: 1, note: 'N/A — automation-native target', requiresHumanReview: false },
+      oauthScopes:      { score: 1, note: 'N/A — automation-native target', requiresHumanReview: false },
+      overallMigration: { score: 1, note: 'N/A — automation-native target', requiresHumanReview: false },
+    },
+    fieldMappingPlaceholders: [],
+    tokensUsed: 0,
+    modelUsed: 'n/a',
   };
 }
 

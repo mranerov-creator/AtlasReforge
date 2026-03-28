@@ -106,7 +106,7 @@ PRE-ANALYSIS SIGNALS (from static analysis):
 - External HTTP calls: ${parsedScript.dependencies.externalHttpCalls.length}
 - Script dependencies: ${parsedScript.dependencies.scriptDependencies.length}
 - Cloud readiness score: ${parsedScript.cloudReadiness.score}/100
-- Deprecated API reasons: ${[...new Set(parsedScript.dependencies.deprecatedApis.map(a => a.deprecationReason))].join(', ') || 'none'}
+- Deprecated API reasons: ${[...new Set(parsedScript.dependencies.deprecatedApis.map((a: { deprecationReason: string }) => a.deprecationReason))].join(', ') || 'none'}
 
 <script filename="${parsedScript.originalFilename}">
 ${scriptSample}

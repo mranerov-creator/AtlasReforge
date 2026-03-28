@@ -55,7 +55,7 @@ BUSINESS LOGIC SUMMARY:
 AUTOMATION SUITABILITY PRE-ANALYSIS:
 - Mapped trigger: ${automationSuitability.mappedTrigger ?? 'unknown'}
 - Mappable operations (${automationSuitability.mappableOperations.length}):
-${automationSuitability.mappableOperations.map((op) =>
+${automationSuitability.mappableOperations.map((op: { label: string; automationEquivalent: string | null }) =>
   `  · ${op.label} → Automation: ${op.automationEquivalent ?? 'TBD'}`
 ).join('\n') || '  (none detected)'}
 - Rationale: ${automationSuitability.rationale}
