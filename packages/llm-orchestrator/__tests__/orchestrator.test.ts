@@ -27,7 +27,11 @@ import type {
   LlmProvider,
   RagDocument,
   S4GeneratorOutput,
+  S4bGeneratorOutput,
 } from '../src/types/pipeline.types.js';
+import type { AutomationSuitability } from '@atlasreforge/parser';
+import { runS4bAutomationGenerator } from '../src/stages/s4b-automation-generator.js';
+import { assessAutomationSuitability } from '@atlasreforge/parser';
 
 // ─── Fixtures ─────────────────────────────────────────────────────────────────
 
@@ -575,5 +579,516 @@ def cf = ComponentAccessor.getCustomFieldManager().getCustomFieldObject("customf
         { classifierProvider: failingProvider, generatorProvider },
       ),
     ).rejects.toThrow(PipelineError);
+  });
+});
+
+// ─── Automation-Native pathway tests (12 tests) ───────────────────────────────
+
+// ── Fixtures ──────────────────────────────────────────────────────────────────
+
+const SIMPLE_ASSIGN_SCRIPT = `
+issue.setAssignee(userManager.getUserByName("jsmith"))
+addComment(issue, "Auto-assigned on creation")
+`.trim();
+
+const COMPLEX_SCRIPT_WITH_BLOCKERS = `
+import com.atlassian.jira.component.ComponentAccessor
+import java.io.File
+def issueManager = ComponentAccessor.getIssueManager()
+def f = new File("/tmp/output.csv")
+require("shared-utils.groovy")
+`.trim();
+
+const GROOVY_FIELD_SET_SCRIPT = `
+def cf = customFieldManager.getCustomFieldObject("customfield_10048")
+issue.setCustomFieldValue(cf, "Approved")
+addComment(issue, "Field updated automatically")
+`.trim();
+
+function buildMockParsedScriptForAutomation(
+  overrides: Partial<ParsedScriptShell> = {},
+): ParsedScriptShell {
+  return buildMockParsedScript({
+    triggerEvent: 'issue-created',
+    moduleType: 'post-function',
+    complexity: 'low',
+    cloudReadiness: {
+      overallLevel: 'green',
+      score: 85,
+      issues: [],
+      recommendedMigrationTarget: 'automation-native',
+      estimatedEffortHours: { consultantHours: 4, aiAssistedHours: 1, savingsPercent: 75 },
+      automationSuitability: {
+        isSuitable: true,
+        confidence: 'high',
+        mappedTrigger: 'Issue created',
+        mappableOperations: [
+          { label: 'Assign issue', sourceExpression: 'setAssignee', automationEquivalent: 'Assign issue' },
+          { label: 'Add comment', sourceExpression: 'addComment', automationEquivalent: 'Add comment' },
+        ],
+        unmappableOperations: [],
+        rationale: 'All operations map to Automation primitives',
+      },
+    },
+    ...overrides,
+  });
+}
+
+function buildMockSuitability(overrides: Partial<AutomationSuitability> = {}): AutomationSuitability {
+  return {
+    isSuitable: true,
+    confidence: 'high',
+    mappedTrigger: 'Issue created',
+    mappableOperations: [
+      { label: 'Assign issue', sourceExpression: 'setAssignee()', automationEquivalent: 'Assign issue' },
+      { label: 'Add comment', sourceExpression: 'addComment()', automationEquivalent: 'Add comment' },
+    ],
+    unmappableOperations: [],
+    rationale: 'All operations expressible in Automation',
+    ...overrides,
+  };
+}
+
+function buildMockS4bOutput(overrides: Partial<S4bGeneratorOutput> = {}): S4bGeneratorOutput {
+  return {
+    automationRule: {
+      ruleName: 'Auto-assign on issue creation',
+      ruleJson: JSON.stringify({
+        name: 'Auto-assign on issue creation',
+        state: 'ENABLED',
+        triggers: [{ component: { type: 'jira:issue-created' }, children: [], conditions: [] }],
+        components: [
+          { component: { type: 'jira:assign-issue', value: { assignee: 'currentUser' } }, children: [], conditions: [] },
+          { component: { type: 'jira:add-comment', value: { comment: 'Auto-assigned on creation' } }, children: [], conditions: [] },
+        ],
+      }),
+      description: 'Assigns issue and adds comment on creation',
+      limitations: [],
+      postImportSteps: ['Verify assignee configuration'],
+    },
+    diagram: {
+      type: 'flowchart',
+      title: 'Auto-assign — Automation Rule',
+      mermaidSource: 'flowchart TD\n  A([Issue created]) --> B[Assign issue]\n  B --> C[Add comment]\n  C --> D([Done])',
+    },
+    confidence: {
+      triggerMapping:   { score: 1.0, note: 'Direct match: Issue created', requiresHumanReview: false },
+      conditionMapping: { score: 1.0, note: 'No conditions', requiresHumanReview: false },
+      actionMapping:    { score: 0.95, note: 'Standard actions', requiresHumanReview: false },
+      overallMigration: { score: 0.95, note: 'High confidence', requiresHumanReview: false },
+    },
+    fieldMappingPlaceholders: [],
+    tokensUsed: 800,
+    modelUsed: 'claude-sonnet-4-6',
+    ...overrides,
+  };
+}
+
+function buildMockS1ForAutomation() {
+  return {
+    language: 'groovy' as const,
+    moduleType: 'post-function' as const,
+    triggerEvent: 'issue-created' as const,
+    complexity: 'low' as const,
+    migrationTarget: 'automation-native' as const,
+    requiresFieldMappingRegistry: false,
+    requiresUserMigration: false,
+    hasExternalIntegrations: false,
+    estimatedPipelineCost: {
+      s2ExtractorTokens: 300,
+      s3RetrievalDocCount: 0,
+      s4GeneratorTokens: 800,
+      totalEstimatedUsd: 0.003,
+    },
+    tokensUsed: 150,
+  };
+}
+
+// ── Test group 1: assessAutomationSuitability (parser) ────────────────────────
+
+describe('assessAutomationSuitability — parser analyzer', () => {
+  const baseDeps = {
+    customFields: [],
+    groups: [],
+    users: [],
+    externalHttpCalls: [],
+    internalApiCalls: [],
+    deprecatedApis: [],
+    scriptDependencies: [],
+  };
+
+  const baseCtx = {
+    language: 'groovy' as const,
+    moduleType: 'post-function' as const,
+    triggerEvent: 'issue-created' as const,
+    linesOfCode: 15,
+  };
+
+  it('returns isSuitable:true for simple script with known trigger and mappable ops', () => {
+    const result = assessAutomationSuitability(baseDeps, baseCtx, SIMPLE_ASSIGN_SCRIPT);
+    expect(result.isSuitable).toBe(true);
+    expect(result.mappedTrigger).toBe('Issue created');
+    expect(result.mappableOperations.length).toBeGreaterThan(0);
+  });
+
+  it('returns isSuitable:false when trigger has no Automation equivalent', () => {
+    const ctx = { ...baseCtx, triggerEvent: 'manual' as const };
+    const result = assessAutomationSuitability(baseDeps, ctx, SIMPLE_ASSIGN_SCRIPT);
+    expect(result.isSuitable).toBe(false);
+    expect(result.mappedTrigger).toBeNull();
+    expect(result.rationale).toContain("'manual'");
+  });
+
+  it('returns isSuitable:false when ComponentAccessor is present', () => {
+    const deps = {
+      ...baseDeps,
+      deprecatedApis: [{
+        apiClass: 'ComponentAccessor',
+        methodCall: 'ComponentAccessor.getIssueManager()',
+        deprecationReason: 'server-only-java-api' as const,
+        cloudAlternative: 'requestJira()',
+        rawExpression: 'ComponentAccessor.getIssueManager()',
+        lineNumber: 1,
+      }],
+    };
+    const result = assessAutomationSuitability(deps, baseCtx, COMPLEX_SCRIPT_WITH_BLOCKERS);
+    expect(result.isSuitable).toBe(false);
+    expect(result.rationale).toContain('Server-only Java APIs');
+  });
+
+  it('returns isSuitable:false when cross-script dependencies exist', () => {
+    const deps = {
+      ...baseDeps,
+      scriptDependencies: [{
+        importedPath: 'shared-utils.groovy',
+        importType: 'require' as const,
+        rawExpression: 'require("shared-utils.groovy")',
+        lineNumber: 1,
+      }],
+    };
+    const result = assessAutomationSuitability(deps, baseCtx, COMPLEX_SCRIPT_WITH_BLOCKERS);
+    expect(result.isSuitable).toBe(false);
+    expect(result.rationale).toContain('cross-script dependencies');
+  });
+
+  it('returns confidence:high for low-complexity all-mappable script', () => {
+    const result = assessAutomationSuitability(baseDeps, baseCtx, SIMPLE_ASSIGN_SCRIPT);
+    if (result.isSuitable) {
+      expect(result.confidence).toBe('high');
+    }
+  });
+
+  it('populates mappableOperations with correct Automation equivalents', () => {
+    const result = assessAutomationSuitability(baseDeps, baseCtx, GROOVY_FIELD_SET_SCRIPT);
+    const setFieldOp = result.mappableOperations.find((op: { label: string }) => op.label === 'Set field value');
+    expect(setFieldOp).toBeDefined();
+    expect(setFieldOp?.automationEquivalent).toBe('Edit issue fields');
+  });
+});
+
+// ── Test group 2: runS4bAutomationGenerator (stage) ───────────────────────────
+
+describe('Stage 4b — runS4bAutomationGenerator', () => {
+  it('returns AutomationRuleOutput with valid ruleJson on success', async () => {
+    const mockProvider: LlmProvider = {
+      modelId: 'claude-sonnet-4-6',
+      complete: vi.fn().mockResolvedValue({
+        content: JSON.stringify({
+          ruleName: 'Auto-assign on issue creation',
+          ruleJson: JSON.stringify({
+            name: 'Auto-assign on issue creation',
+            state: 'ENABLED',
+            triggers: [{ component: { type: 'jira:issue-created' }, children: [], conditions: [] }],
+            components: [
+              { component: { type: 'jira:assign-issue', value: {} }, children: [], conditions: [] },
+            ],
+          }),
+          description: 'Assigns issue on creation',
+          limitations: [],
+          postImportSteps: [],
+          fieldMappingPlaceholders: [],
+          confidence: {
+            triggerMapping:   { score: 1.0, note: 'Direct match', requiresHumanReview: false },
+            conditionMapping: { score: 1.0, note: 'No conditions', requiresHumanReview: false },
+            actionMapping:    { score: 0.95, note: 'Standard', requiresHumanReview: false },
+            overallMigration: { score: 0.97, note: 'High', requiresHumanReview: false },
+          },
+          diagram: {
+            type: 'flowchart',
+            title: 'Auto-assign Rule',
+            mermaidSource: 'flowchart TD\n  A([Issue created]) --> B[Assign]\n  B --> C([Done])',
+          },
+        }),
+        tokensUsed: 800,
+        modelId: 'claude-sonnet-4-6',
+        durationMs: 1200,
+      }),
+    };
+
+    const s2Empty = {
+      enrichedCustomFields: [],
+      enrichedGroups: [],
+      enrichedUserRefs: [],
+      businessLogicSummary: {
+        triggerDescription: 'On issue creation',
+        purposeNarrative: 'Assigns issue',
+        inputConditions: [],
+        outputActions: ['Assign issue'],
+        externalIntegrations: [],
+      },
+      detectedPatterns: [],
+      tokensUsed: 100,
+    };
+
+    const result = await runS4bAutomationGenerator(
+      buildMockParsedScriptForAutomation(),
+      SIMPLE_ASSIGN_SCRIPT,
+      buildMockS1ForAutomation(),
+      s2Empty,
+      buildMockSuitability(),
+      mockProvider,
+      0,
+    );
+
+    expect(result.automationRule.ruleName).toBe('Auto-assign on issue creation');
+    expect(() => JSON.parse(result.automationRule.ruleJson)).not.toThrow();
+    expect(result.diagram.type).toBe('flowchart');
+    expect(result.confidence.triggerMapping.score).toBe(1.0);
+    expect(result.tokensUsed).toBe(800);
+  });
+
+  it('returns fallback skeleton rule when LLM returns invalid JSON', async () => {
+    const brokenProvider: LlmProvider = {
+      modelId: 'claude-sonnet-4-6',
+      complete: vi.fn().mockResolvedValue({
+        content: 'This is not valid JSON at all {{broken}',
+        tokensUsed: 50,
+        modelId: 'claude-sonnet-4-6',
+        durationMs: 500,
+      }),
+    };
+
+    const s2Empty = {
+      enrichedCustomFields: [],
+      enrichedGroups: [],
+      enrichedUserRefs: [],
+      businessLogicSummary: {
+        triggerDescription: 'trigger',
+        purposeNarrative: 'purpose',
+        inputConditions: [],
+        outputActions: [],
+        externalIntegrations: [],
+      },
+      detectedPatterns: [],
+      tokensUsed: 0,
+    };
+
+    const result = await runS4bAutomationGenerator(
+      buildMockParsedScriptForAutomation(),
+      SIMPLE_ASSIGN_SCRIPT,
+      buildMockS1ForAutomation(),
+      s2Empty,
+      buildMockSuitability(),
+      brokenProvider,
+      0,
+    );
+
+    // Must not throw — fallback rule is returned
+    expect(result.automationRule.ruleJson).toBeTruthy();
+    expect(() => JSON.parse(result.automationRule.ruleJson)).not.toThrow();
+    // Fallback rule is DISABLED for safety
+    const parsed = JSON.parse(result.automationRule.ruleJson);
+    expect(parsed.state).toBe('DISABLED');
+    // Confidence scores are 0 for fallback
+    expect(result.confidence.overallMigration.score).toBe(0);
+    expect(result.confidence.overallMigration.requiresHumanReview).toBe(true);
+  });
+});
+
+// ── Test group 3: OrchestratorService automation-native pathway ───────────────
+
+describe('OrchestratorService — automation-native dispatch', () => {
+  function buildAutomationOrchestrator() {
+    return new OrchestratorService({
+      classifierModel: 'gpt-4o-mini',
+      generatorModel: 'claude-sonnet-4-6',
+      maxRetries: 0,
+      stageTimeoutMs: 10_000,
+      ragEnabled: false,
+    });
+  }
+
+  function buildSequentialClassifierMock(s1Response: object, s2Response: object): LlmProvider {
+    let callCount = 0;
+    return {
+      modelId: 'gpt-4o-mini',
+      complete: vi.fn().mockImplementation(() => {
+        callCount++;
+        const body = callCount === 1 ? s1Response : s2Response;
+        return Promise.resolve({
+          content: JSON.stringify(body),
+          tokensUsed: 150,
+          modelId: 'gpt-4o-mini',
+          durationMs: 80,
+        });
+      }),
+    };
+  }
+
+  it('routes to S4b when S1 returns automation-native target', async () => {
+    const s1Response = {
+      moduleType: 'post-function',
+      triggerEvent: 'issue-created',
+      complexity: 'low',
+      migrationTarget: 'automation-native',
+      requiresFieldMappingRegistry: false,
+      requiresUserMigration: false,
+      hasExternalIntegrations: false,
+      estimatedS4Tokens: 800,
+      classificationRationale: 'Simple assign + comment — automation-native',
+    };
+
+    const s2Response = {
+      enrichedCustomFields: [],
+      enrichedGroups: [],
+      enrichedUserRefs: [],
+      businessLogicSummary: {
+        triggerDescription: 'On issue creation',
+        purposeNarrative: 'Assigns issue',
+        inputConditions: [],
+        outputActions: ['Assign issue'],
+        externalIntegrations: [],
+      },
+      detectedPatterns: [],
+    };
+
+    const classifierMock = buildSequentialClassifierMock(s1Response, s2Response);
+
+    const generatorMock: LlmProvider = {
+      modelId: 'claude-sonnet-4-6',
+      complete: vi.fn().mockResolvedValue({
+        content: JSON.stringify({
+          ruleName: 'Auto-assign on issue creation',
+          ruleJson: JSON.stringify({ name: 'test', state: 'ENABLED', triggers: [], components: [] }),
+          description: 'Assigns issue',
+          limitations: [],
+          postImportSteps: [],
+          fieldMappingPlaceholders: [],
+          confidence: {
+            triggerMapping:   { score: 0.98, note: 'Direct', requiresHumanReview: false },
+            conditionMapping: { score: 1.0,  note: 'None',   requiresHumanReview: false },
+            actionMapping:    { score: 0.95, note: 'OK',     requiresHumanReview: false },
+            overallMigration: { score: 0.97, note: 'High',   requiresHumanReview: false },
+          },
+          diagram: {
+            type: 'flowchart',
+            title: 'Automation Rule',
+            mermaidSource: 'flowchart TD\n  A --> B',
+          },
+        }),
+        tokensUsed: 700,
+        modelId: 'claude-sonnet-4-6',
+        durationMs: 900,
+      }),
+    };
+
+    const result = await buildAutomationOrchestrator().run(
+      {
+        jobId: 'auto-test-001',
+        parsedScript: buildMockParsedScriptForAutomation(),
+        rawScriptContent: SIMPLE_ASSIGN_SCRIPT,
+      },
+      { classifierProvider: classifierMock, generatorProvider: generatorMock },
+    );
+
+    // Automation-native: forgeFiles and scriptRunnerCode must be null
+    expect(result.forgeFiles).toBeNull();
+    expect(result.scriptRunnerCode).toBeNull();
+    // automationRule must be populated
+    expect(result.automationRule).not.toBeNull();
+    expect(result.automationRule?.ruleName).toBe('Auto-assign on issue creation');
+    // Stage timings must show S4b, NOT S4
+    expect(result.pipeline.stageTimings).toHaveProperty('s4b-automation-generator');
+    expect(result.pipeline.stageTimings).not.toHaveProperty('s4-generator');
+    // oauthScopes empty for automation-native
+    expect(result.oauthScopes).toHaveLength(0);
+    // Validation issues empty (S5 skipped for automation-native)
+    expect(result.validationIssues).toHaveLength(0);
+  });
+
+  it('sets automationRule:null and uses S4 when target is forge-native', async () => {
+    const s1Response = {
+      moduleType: 'post-function',
+      triggerEvent: 'issue-transitioned',
+      complexity: 'medium',
+      migrationTarget: 'forge-native',
+      requiresFieldMappingRegistry: true,
+      requiresUserMigration: false,
+      hasExternalIntegrations: false,
+      estimatedS4Tokens: 1500,
+      classificationRationale: 'Standard forge-native',
+    };
+
+    const s2Response = {
+      enrichedCustomFields: [],
+      enrichedGroups: [],
+      enrichedUserRefs: [],
+      businessLogicSummary: {
+        triggerDescription: 'On transition',
+        purposeNarrative: 'Updates field',
+        inputConditions: [],
+        outputActions: [],
+        externalIntegrations: [],
+      },
+      detectedPatterns: [],
+    };
+
+    const classifierMock = buildSequentialClassifierMock(s1Response, s2Response);
+
+    const generatorMock: LlmProvider = {
+      modelId: 'claude-sonnet-4-6',
+      complete: vi.fn().mockResolvedValue({
+        content: JSON.stringify({
+          forgeFiles: [{
+            filename: 'manifest.yml',
+            content: 'app:\n  id: test-app\n',
+            language: 'yaml',
+            purpose: 'Manifest',
+          }],
+          scriptRunnerCode: null,
+          oauthScopes: ['read:jira-work'],
+          diagram: {
+            type: 'sequenceDiagram',
+            mermaidSource: 'sequenceDiagram\n  J->>F: trigger',
+            title: 'Forge flow',
+          },
+          confidence: {
+            fieldMapping:     { score: 0.9, note: 'OK', requiresHumanReview: false },
+            webhookLogic:     { score: 0.9, note: 'OK', requiresHumanReview: false },
+            userResolution:   { score: 0.9, note: 'OK', requiresHumanReview: false },
+            oauthScopes:      { score: 0.9, note: 'OK', requiresHumanReview: false },
+            overallMigration: { score: 0.9, note: 'OK', requiresHumanReview: false },
+          },
+          fieldMappingPlaceholders: [],
+        }),
+        tokensUsed: 1100,
+        modelId: 'claude-sonnet-4-6',
+        durationMs: 2000,
+      }),
+    };
+
+    const result = await buildAutomationOrchestrator().run(
+      {
+        jobId: 'forge-test-001',
+        parsedScript: buildMockParsedScript(),
+        rawScriptContent: 'def x = ComponentAccessor.getIssueManager()',
+      },
+      { classifierProvider: classifierMock, generatorProvider: generatorMock },
+    );
+
+    expect(result.automationRule).toBeNull();
+    expect(result.forgeFiles).not.toBeNull();
+    expect(result.pipeline.stageTimings).toHaveProperty('s4-generator');
+    expect(result.pipeline.stageTimings).not.toHaveProperty('s4b-automation-generator');
   });
 });
