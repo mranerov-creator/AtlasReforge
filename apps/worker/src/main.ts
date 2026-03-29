@@ -163,7 +163,7 @@ async function processMigration(job: Job<MigrationJobData>): Promise<unknown> {
   // ── Phase 3: Registry placeholder resolution ──────────────────────────────
   await updateStage('resolving');
 
-  let finalResult = pipelineResult;
+  let resolvedResult = pipelineResult;
   const session = await registryService.getSession(jobId);
 
   if (session !== null && session.isComplete && pipelineResult.forgeFiles !== null) {
@@ -173,7 +173,7 @@ async function processMigration(job: Job<MigrationJobData>): Promise<unknown> {
         pipelineResult.forgeFiles,
       );
       // Rebuild result with resolved placeholders
-      finalResult = {
+      resolvedResult = {
         ...pipelineResult,
         forgeFiles: patchedFiles as typeof pipelineResult.forgeFiles,
       };
@@ -188,7 +188,24 @@ async function processMigration(job: Job<MigrationJobData>): Promise<unknown> {
   await updateStage('completed');
   log('info', `[Job ${jobId}] Complete — ${pipelineResult.pipeline.totalDurationMs}ms, $${pipelineResult.pipeline.totalCostUsd}`);
 
-  return finalResult;
+  // ── Wrap orchestrator result with parser-derived metadata ──────────────
+  // The orchestrator returns code/confidence/diagram, but the frontend also
+  // needs filename, readiness level, complexity, LOC, effort estimates, etc.
+  // These come from the parser output — exactly like the mock result does.
+  return {
+    ...resolvedResult,
+    originalFilename: filename,
+    cloudReadinessLevel: parsedScript.cloudReadiness.overallLevel,
+    recommendedTarget: parsedScript.cloudReadiness.recommendedMigrationTarget,
+    complexity: parsedScript.complexity,
+    linesOfCode: parsedScript.linesOfCode,
+    workflowContext: parsedScript.workflowContext ?? null,
+    estimatedEffortHours: {
+      consultantHours: parsedScript.cloudReadiness.estimatedEffortHours.consultantHours,
+      aiAssistedHours: parsedScript.cloudReadiness.estimatedEffortHours.aiAssistedHours,
+      savingsPercent:  parsedScript.cloudReadiness.estimatedEffortHours.savingsPercent,
+    },
+  };
 }
 
 // ─── RAG crawl processor ──────────────────────────────────────────────────────

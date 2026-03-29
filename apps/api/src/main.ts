@@ -41,7 +41,7 @@ async function bootstrap(): Promise<void> {
   );
 
   // ── Multipart file upload support ─────────────────────────────────────────
-  await app.register(multipart, {
+  await app.register(multipart as any, {
     limits: {
       fileSize: 2 * 1024 * 1024, // 2 MB max file size
       files: 1,                   // Single file per request
