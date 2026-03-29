@@ -18,11 +18,9 @@
 
 import dotenv from 'dotenv';
 import path from 'node:path';
-import { fileURLToPath } from 'node:url';
 
 // Resolve .env.local from monorepo root (3 dirs up: src/ → worker/ → apps/ → root/)
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const envPath = path.resolve(__dirname, '..', '..', '..', '.env.local');
+const envPath = path.resolve(__dirname, '../../../.env.local');
 dotenv.config({ path: envPath });
 import http from 'node:http';
 import { Worker, type Job } from 'bullmq';
@@ -140,7 +138,7 @@ async function processMigration(job: Job<MigrationJobData>): Promise<unknown> {
     // Dev mode without API keys — return mock result immediately
     log('warn', `[Job ${jobId}] Mock mode — no API keys`);
     await updateStage('completed');
-    return buildMockResult(jobId, filename, parsedScript);
+    return buildMockResult(jobId, filename, parsedScript, scriptContent);
   }
 
   let pipelineResult: Awaited<ReturnType<typeof orchestratorService.run>>;
@@ -231,10 +229,12 @@ function buildMockResult(
   jobId: string,
   filename: string,
   parsedScript: Awaited<ReturnType<typeof parserService.parse>>,
+  rawScriptContent: string,
 ): object {
   return {
     jobId,
     originalFilename: filename,
+    originalContent: rawScriptContent,
     completedAt: new Date().toISOString(),
     cloudReadinessScore: parsedScript.cloudReadiness.score,
     cloudReadinessLevel: parsedScript.cloudReadiness.overallLevel,

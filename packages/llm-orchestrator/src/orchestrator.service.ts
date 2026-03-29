@@ -315,6 +315,7 @@ export class OrchestratorService {
     return {
       jobId: input.jobId,
       completedAt: new Date().toISOString(),
+      originalContent: input.rawScriptContent,
       forgeFiles: isAutomationNative ? null : finalOutput.forgeFiles,
       scriptRunnerCode: isAutomationNative ? null : finalOutput.scriptRunnerCode,
       automationRule: s4bOutput?.automationRule ?? null,

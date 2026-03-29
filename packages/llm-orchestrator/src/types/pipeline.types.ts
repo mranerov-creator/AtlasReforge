@@ -279,6 +279,7 @@ export interface MigrationResult {
   readonly completedAt: string;     // ISO 8601
 
   // Core outputs
+  readonly originalContent: string;
   readonly forgeFiles: ReadonlyArray<GeneratedFile> | null;
   readonly scriptRunnerCode: GeneratedFile | null;
 

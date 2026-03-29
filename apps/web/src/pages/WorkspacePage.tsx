@@ -206,7 +206,30 @@ function ConfidenceRow({ label, score, note, requiresHumanReview }: {
         <div style={{ width: `${pct}%`, height: '100%', background: color, borderRadius: '9999px', transition: 'width 0.4s' }} />
       </div>
       <span style={{ fontSize: '12px', fontWeight: 600, color, width: '36px', textAlign: 'right' }}>{pct}%</span>
-      {requiresHumanReview && <span title={note} style={{ fontSize: '13px', cursor: 'help' }}>👁</span>}
+      {requiresHumanReview && (
+        <div style={{ position: 'relative', display: 'flex', alignItems: 'center', cursor: 'help' }} className="atlas-tooltip-trigger">
+          <span style={{ fontSize: '13px' }}>👁</span>
+          <div className="atlas-tooltip" style={{
+            position: 'absolute', right: '100%', marginRight: '8px', zIndex: 50,
+            background: '#1f2937', color: '#fff', padding: '6px 10px',
+            borderRadius: '6px', fontSize: '12px', width: 'max-content', maxWidth: '250px',
+            boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)',
+            pointerEvents: 'none',
+          }}>
+            {note}
+            {/* Tooltip arrow */}
+            <div style={{
+              position: 'absolute', top: '50%', right: '-4px', transform: 'translateY(-50%)',
+              borderStyle: 'solid', borderWidth: '5px 0 5px 5px',
+              borderColor: 'transparent transparent transparent #1f2937',
+            }} />
+          </div>
+        </div>
+      )}
+      <style>{`
+        .atlas-tooltip { opacity: 0; visibility: hidden; transition: opacity 0.2s, visibility 0.2s; }
+        .atlas-tooltip-trigger:hover .atlas-tooltip { opacity: 1; visibility: visible; }
+      `}</style>
     </div>
   );
 }
@@ -943,7 +966,7 @@ export function WorkspacePage(): React.ReactElement {
                   </div>
                   <div style={{ flex: 1, minHeight: 0 }}>
                     <SplitEditor
-                      originalContent={`// Original: ${result.originalFilename}\n// Language detected — upload original file to see content here`}
+                      originalContent={result.originalContent || `// Original: ${result.originalFilename}\n// Loading content...`}
                       originalFilename={result.originalFilename}
                       generatedFiles={result.forgeFiles}
                       scriptRunnerCode={result.scriptRunnerCode}
