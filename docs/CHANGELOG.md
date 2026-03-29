@@ -4,6 +4,21 @@ All notable documentation updates are tracked here. Each entry corresponds to co
 
 ---
 
+## [1.2.1] — 2026-03-29
+
+### Fixed — Worker Result Shape
+
+- **Worker result wrapper**: `processMigration()` now wraps the orchestrator's `MigrationResult` with parser-derived metadata (`originalFilename`, `cloudReadinessLevel`, `recommendedTarget`, `complexity`, `linesOfCode`, `estimatedEffortHours`, `workflowContext`). Previously the real pipeline path omitted these fields (the mock path already had them), causing the frontend to display all-zero values.
+- **API multipart type cast**: Added `as any` cast on `@fastify/multipart` plugin registration to resolve TS type version mismatch between the plugin and NestJS's bundled Fastify types.
+- **SplitEditor language detection**: Guard against undefined filename in `detectLanguage()` preventing crash in Forge/ScriptRunner tabs.
+- **ManualRewriteTab**: Guard against undefined `validationIssues` array preventing crash on `.filter()`.
+
+### Changed — Code Documentation
+
+- `docs/code/worker.md` — Documented result wrapping logic in Phase 3
+
+---
+
 ## [1.2.0] — 2026-03-28
 
 ### Added — Local Development

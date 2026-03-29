@@ -44,6 +44,7 @@ The `processMigration()` function executes the full pipeline:
 1. **Phase 1 — Parse** (synchronous, fast): `ParserService.parse()` extracts language, dependencies, cloud readiness
 2. **Phase 2 — LLM Pipeline** (S1→S5): Sequential stage execution with progress updates
 3. **Phase 3 — Registry Resolution**: If `session.isComplete`, resolves `ATLAS_*()` placeholders
+4. **Phase 4 — Result Wrapping**: Enriches orchestrator output with parser-derived metadata (`originalFilename`, `cloudReadinessLevel`, `complexity`, `linesOfCode`, `estimatedEffortHours`, `workflowContext`) so the frontend receives a complete result shape
 
 ### Progress Reporting
 
