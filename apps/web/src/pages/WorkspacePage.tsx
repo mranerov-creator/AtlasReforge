@@ -51,6 +51,144 @@ function RoiBar({ consultantHours, aiHours, savingsPercent }: {
   );
 }
 
+// ─── Pipeline progress animation ─────────────────────────────────────────────
+
+const PIPELINE_STAGES = [
+  { key: 'queued',       label: 'Queued',       icon: '📋' },
+  { key: 'parsing',      label: 'Parsing',      icon: '🔍' },
+  { key: 'classifying',  label: 'Classifying',  icon: '🧠' },
+  { key: 'extracting',   label: 'Extracting',   icon: '⚙️' },
+  { key: 'retrieving',   label: 'Retrieving',   icon: '📚' },
+  { key: 'generating',   label: 'Generating',   icon: '✨' },
+  { key: 'validating',   label: 'Validating',   icon: '🛡️' },
+  { key: 'resolving',    label: 'Resolving',    icon: '🔗' },
+  { key: 'completed',    label: 'Completed',    icon: '✅' },
+] as const;
+
+const FUN_FACTS = [
+  '💡 Forge apps use an invocation-based model — no persistent server needed.',
+  '🔒 Cloud REST API v3 uses accountId instead of usernames (GDPR compliance).',
+  '⚡ @forge/api requestJira() handles OAuth automatically — no manual token management.',
+  '📊 Each migration generates a Mermaid sequence diagram of the new async flow.',
+  '🔄 Server post-functions are synchronous, but Forge post-functions are async.',
+  '🏗️ The S4 generator produces a complete Forge app scaffold: manifest + handlers.',
+  '🎯 Custom field IDs may differ between Server/DC and Cloud instances.',
+  '📝 Generated code includes ATLAS_*() placeholders for field mapping resolution.',
+];
+
+function PipelineProgress({ currentStage, progress }: { currentStage: string; progress: number }): React.ReactElement {
+  const [elapsed, setElapsed] = React.useState(0);
+  const [factIndex, setFactIndex] = React.useState(0);
+
+  React.useEffect(() => {
+    const timer = setInterval(() => setElapsed((e) => e + 1), 1000);
+    return () => clearInterval(timer);
+  }, []);
+
+  React.useEffect(() => {
+    const factTimer = setInterval(() => setFactIndex((i) => (i + 1) % FUN_FACTS.length), 6000);
+    return () => clearInterval(factTimer);
+  }, []);
+
+  const currentIdx = PIPELINE_STAGES.findIndex((s) => s.key === currentStage);
+  const minutes = Math.floor(elapsed / 60);
+  const seconds = elapsed % 60;
+
+  return (
+    <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: '24px', padding: '40px' }}>
+      {/* Animated spinner */}
+      <div style={{ position: 'relative', width: '80px', height: '80px' }}>
+        <div style={{
+          width: '80px', height: '80px', borderRadius: '50%',
+          border: '4px solid #e5e7eb', borderTopColor: '#6366f1',
+          animation: 'atlasReforgeSpinner 1s linear infinite',
+        }} />
+        <span style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '28px' }}>
+          {PIPELINE_STAGES[currentIdx >= 0 ? currentIdx : 0]?.icon ?? '⚡'}
+        </span>
+      </div>
+
+      {/* Title */}
+      <div style={{ textAlign: 'center' }}>
+        <h2 style={{ margin: 0, fontSize: '20px', fontWeight: 600, color: '#111827' }}>
+          Migrating your script to Cloud
+        </h2>
+        <p style={{ margin: '4px 0 0', fontSize: '14px', color: '#6b7280' }}>
+          {minutes > 0 ? `${minutes}m ${seconds.toString().padStart(2, '0')}s` : `${seconds}s`} elapsed
+        </p>
+      </div>
+
+      {/* Progress bar */}
+      <div style={{ width: '100%', maxWidth: '480px' }}>
+        <div style={{ height: '8px', background: '#e5e7eb', borderRadius: '9999px', overflow: 'hidden' }}>
+          <div style={{
+            width: `${progress}%`, height: '100%', borderRadius: '9999px',
+            background: 'linear-gradient(90deg, #818cf8, #6366f1, #4f46e5)',
+            transition: 'width 0.6s ease-out',
+          }} />
+        </div>
+        <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '6px', fontSize: '12px', color: '#9ca3af' }}>
+          <span>{progress}%</span>
+          <span style={{ fontWeight: 500, color: '#6366f1' }}>
+            {currentStage === 'starting' ? 'Initializing...' : currentStage.charAt(0).toUpperCase() + currentStage.slice(1)}
+          </span>
+        </div>
+      </div>
+
+      {/* Stage pipeline */}
+      <div style={{ display: 'flex', gap: '4px', alignItems: 'center', flexWrap: 'wrap', justifyContent: 'center' }}>
+        {PIPELINE_STAGES.filter(s => s.key !== 'queued' && s.key !== 'completed').map((stage, idx) => {
+          const stageIdx = PIPELINE_STAGES.findIndex(s => s.key === stage.key);
+          const isDone = currentIdx > stageIdx;
+          const isCurrent = currentIdx === stageIdx;
+          return (
+            <React.Fragment key={stage.key}>
+              {idx > 0 && <div style={{ width: '16px', height: '2px', background: isDone ? '#6366f1' : '#e5e7eb', transition: 'background 0.4s' }} />}
+              <div style={{
+                display: 'flex', alignItems: 'center', gap: '4px',
+                padding: '4px 10px', borderRadius: '999px', fontSize: '12px', fontWeight: 500,
+                transition: 'all 0.4s',
+                background: isCurrent ? '#eef2ff' : isDone ? '#f0fdf4' : '#f9fafb',
+                color: isCurrent ? '#4f46e5' : isDone ? '#15803d' : '#9ca3af',
+                border: isCurrent ? '1.5px solid #6366f1' : '1px solid transparent',
+                transform: isCurrent ? 'scale(1.05)' : 'scale(1)',
+              }}>
+                {isDone ? <span>✓</span> : isCurrent ? <span style={{ display: 'inline-block', width: '6px', height: '6px', borderRadius: '50%', background: '#6366f1', animation: 'atlasReforgePulse 1.2s ease-in-out infinite' }} /> : null}
+                <span>{stage.label}</span>
+              </div>
+            </React.Fragment>
+          );
+        })}
+      </div>
+
+      {/* Fun fact */}
+      <div style={{
+        maxWidth: '420px', padding: '12px 16px', borderRadius: '8px',
+        background: '#fffbeb', border: '1px solid #fde68a',
+        fontSize: '13px', color: '#92400e', textAlign: 'center',
+        animation: 'atlasReforgeFadeIn 0.5s ease-in',
+      }} key={factIndex}>
+        {FUN_FACTS[factIndex]}
+      </div>
+
+      {/* CSS animations */}
+      <style>{`
+        @keyframes atlasReforgeSpinner {
+          to { transform: rotate(360deg); }
+        }
+        @keyframes atlasReforgePulse {
+          0%, 100% { opacity: 1; transform: scale(1); }
+          50% { opacity: 0.4; transform: scale(0.7); }
+        }
+        @keyframes atlasReforgeFadeIn {
+          from { opacity: 0; transform: translateY(6px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+      `}</style>
+    </div>
+  );
+}
+
 // ─── Confidence row ───────────────────────────────────────────────────────────
 
 function ConfidenceRow({ label, score, note, requiresHumanReview }: {
@@ -772,11 +910,7 @@ export function WorkspacePage(): React.ReactElement {
         {/* Main content */}
         <main style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0, padding: '16px', gap: '0' }}>
           {isProcessing && (
-            <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#6b7280', fontSize: '16px', flexDirection: 'column', gap: '12px' }}>
-              <div style={{ fontSize: '48px' }}>⟳</div>
-              <span>Processing your script...</span>
-              <span style={{ fontSize: '14px' }}>Stage: {currentStage || 'starting'} ({progress}%)</span>
-            </div>
+            <PipelineProgress currentStage={currentStage || 'starting'} progress={progress} />
           )}
 
           {isFailed && (

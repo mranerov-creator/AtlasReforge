@@ -327,7 +327,7 @@ export const DEFAULT_ORCHESTRATOR_CONFIG: OrchestratorConfig = {
   classifierModel: 'gpt-4o-mini',
   generatorModel: 'claude-sonnet-4-6',
   maxRetries: 2,
-  stageTimeoutMs: 45_000,
+  stageTimeoutMs: 120_000,  // 2 minutes — S4 with maxTokens=8192 can take 60-80s
   ragEnabled: true,
 };
 
