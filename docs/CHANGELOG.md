@@ -15,6 +15,11 @@ All notable documentation updates are tracked here. Each entry corresponds to co
 - **S4 token budget**: Changed `maxTokens` to a fixed `8192`. S1 classifier underestimated output tokens for all scripts, causing Claude to truncate its JSON response mid-output (42 open braces vs 36 close = 6 unclosed braces), resulting in `forgeFiles: null` and all-zero confidence scores.
 - **S4 debug logging**: Added `console.log`/`console.error` to `s4-generator.ts` to log parse success (file count, maxTokens) or failure (raw content preview, error) for easier troubleshooting.
 - **Worker dotenv path**: `dotenv/config` loads `.env` by default, but API keys live in `.env.local`. Changed to `dotenv.config({ path: envPath })` with absolute path resolution via `import.meta.url` — prevents intermittent mock mode on worker restart.
+- **Stage timeout**: Increased `stageTimeoutMs` from 45s to 120s. S4 with `maxTokens=8192` can take 60-80s for complex scripts.
+
+### Added — Frontend UX
+
+- **Animated pipeline progress**: New `PipelineProgress` component replaces the static spinner during processing. Includes: CSS-animated spinner with stage-specific icons, stage-by-stage pipeline indicators (✓ done / pulsing current / gray pending), gradient progress bar with percentage, elapsed time counter, and rotating "fun fact" tips every 6 seconds.
 
 ### Changed — Code Documentation
 
