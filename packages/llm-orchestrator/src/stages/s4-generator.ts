@@ -221,15 +221,11 @@ export async function runS4Generator(
     retrievalOutput,
   );
 
-  // Token budget: complex scripts can need up to 8000 output tokens.
-  // Floor of 2000 tokens ensures the response is never truncated mid-JSON.
-  const maxTokens = Math.max(
-    2000,
-    Math.min(
-      8192,
-      classifierOutput.estimatedPipelineCost.s4GeneratorTokens,
-    ),
-  );
+  // Token budget: always use the maximum to avoid truncated JSON.
+  // Truncated responses are catastrophic (unbalanced braces → parse failure → forgeFiles: null).
+  // Cost difference is negligible (~$0.02 extra) vs. the cost of returning no code at all.
+  // S1 consistently underestimates because Claude adds verbose migration notes/docs.
+  const maxTokens = 8192;
 
   const raw = await withRetry(
     () => generatorProvider.complete({
@@ -251,6 +247,12 @@ export async function runS4Generator(
     // Log the failure for debugging
     console.error(`[S4] ✗ JSON parse FAILED — maxTokens: ${maxTokens}, raw length: ${raw.content.length}, error: ${err instanceof Error ? err.message : String(err)}`);
     console.error(`[S4] ✗ Raw content (first 500 chars): ${raw.content.slice(0, 500)}`);
+    // Dump full raw content to temp file for diagnosis
+    try {
+      const fs = await import('fs');
+      fs.writeFileSync('/tmp/s4_raw_output.txt', raw.content, 'utf-8');
+      console.error('[S4] ✗ Full raw content written to /tmp/s4_raw_output.txt');
+    } catch { /* ignore fs errors */ }
     // If JSON parsing fails, return a structured error with a fallback diagram
     return {
       forgeFiles: null,
