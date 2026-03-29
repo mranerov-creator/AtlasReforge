@@ -20,6 +20,8 @@ All notable documentation updates are tracked here. Each entry corresponds to co
 ### Added — Frontend UX
 
 - **Animated pipeline progress**: New `PipelineProgress` component replaces the static spinner during processing. Includes: CSS-animated spinner with stage-specific icons, stage-by-stage pipeline indicators (✓ done / pulsing current / gray pending), gradient progress bar with percentage, elapsed time counter, and rotating "fun fact" tips every 6 seconds.
+- **Legacy code display**: the `originalContent` of the uploaded script is now preserved through the orchestrator pipeline and returned to the frontend. The `SplitEditor` now displays the actual legacy Groovy code in the left panel instead of a placeholder.
+- **Confidence tooltips**: Replaced native browser `title` attributes on Confidence icons with a custom CSS hover tooltip (`.atlas-tooltip`) for instant, reliable display of AI notes.
 
 ### Changed — Code Documentation
 
