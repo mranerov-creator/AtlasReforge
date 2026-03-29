@@ -221,10 +221,14 @@ export async function runS4Generator(
     retrievalOutput,
   );
 
-  // Token budget: complex scripts can need up to 4000 output tokens
-  const maxTokens = Math.min(
-    4000,
-    classifierOutput.estimatedPipelineCost.s4GeneratorTokens,
+  // Token budget: complex scripts can need up to 8000 output tokens.
+  // Floor of 2000 tokens ensures the response is never truncated mid-JSON.
+  const maxTokens = Math.max(
+    2000,
+    Math.min(
+      8192,
+      classifierOutput.estimatedPipelineCost.s4GeneratorTokens,
+    ),
   );
 
   const raw = await withRetry(
@@ -241,7 +245,12 @@ export async function runS4Generator(
   let parsed: RawS4Response;
   try {
     parsed = parseJsonResponse<RawS4Response>(raw.content);
-  } catch {
+    // Debug: log what S4 actually returned
+    console.log(`[S4] ✓ JSON parsed — forgeFiles: ${parsed.forgeFiles?.length ?? 'null'}, srCode: ${parsed.scriptRunnerCode ? 'yes' : 'null'}, maxTokens: ${maxTokens}`);
+  } catch (err) {
+    // Log the failure for debugging
+    console.error(`[S4] ✗ JSON parse FAILED — maxTokens: ${maxTokens}, raw length: ${raw.content.length}, error: ${err instanceof Error ? err.message : String(err)}`);
+    console.error(`[S4] ✗ Raw content (first 500 chars): ${raw.content.slice(0, 500)}`);
     // If JSON parsing fails, return a structured error with a fallback diagram
     return {
       forgeFiles: null,
