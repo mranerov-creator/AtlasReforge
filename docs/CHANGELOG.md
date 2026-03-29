@@ -12,10 +12,13 @@ All notable documentation updates are tracked here. Each entry corresponds to co
 - **API multipart type cast**: Added `as any` cast on `@fastify/multipart` plugin registration to resolve TS type version mismatch between the plugin and NestJS's bundled Fastify types.
 - **SplitEditor language detection**: Guard against undefined filename in `detectLanguage()` preventing crash in Forge/ScriptRunner tabs.
 - **ManualRewriteTab**: Guard against undefined `validationIssues` array preventing crash on `.filter()`.
+- **S4 token budget**: Changed `maxTokens` from `Math.min(4000, estimated)` to `Math.max(2000, Math.min(8192, estimated))`. S1 classifier underestimated output tokens for some scripts, causing Claude to truncate its JSON response mid-output, resulting in `forgeFiles: null` and all-zero confidence scores.
+- **S4 debug logging**: Added `console.log`/`console.error` to `s4-generator.ts` to log parse success (file count, maxTokens) or failure (raw content preview, error) for easier troubleshooting.
 
 ### Changed — Code Documentation
 
-- `docs/code/worker.md` — Documented result wrapping logic in Phase 3
+- `docs/code/worker.md` — Documented result wrapping logic (Phase 4)
+- `docs/code/llm-orchestrator.md` — Token budget strategy documented
 
 ---
 

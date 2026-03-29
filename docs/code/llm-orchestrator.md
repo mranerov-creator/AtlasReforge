@@ -66,6 +66,7 @@ graph LR
   1. Direct `JSON.parse`
   2. Markdown fence stripping (` ```json ... ``` `)
   3. Balanced brace extraction `{...}` ignoring prose before/after
+- **S4 Token Budget**: `maxTokens = max(2000, min(8192, s4GeneratorTokens))` — floor prevents truncated JSON when S1 underestimates, ceiling allows complex scripts to generate full code
 
 ## S5 Auto-Validator Rules
 
