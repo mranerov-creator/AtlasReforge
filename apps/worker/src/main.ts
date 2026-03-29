@@ -17,7 +17,13 @@
  */
 
 import dotenv from 'dotenv';
-dotenv.config({ path: '.env.local' }); // Load .env.local (API keys, DATABASE_URL, etc.)
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+// Resolve .env.local from monorepo root (3 dirs up: src/ → worker/ → apps/ → root/)
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const envPath = path.resolve(__dirname, '..', '..', '..', '.env.local');
+dotenv.config({ path: envPath });
 import http from 'node:http';
 import { Worker, type Job } from 'bullmq';
 import { ParserService } from '@atlasreforge/parser';
